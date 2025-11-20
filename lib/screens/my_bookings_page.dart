@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MyBookingsPage extends StatelessWidget {
   const MyBookingsPage({super.key});
@@ -18,8 +19,20 @@ class MyBookingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
-        title: const Text('My Bookings', style: TextStyle(color: Colors.white)),
         centerTitle: true,
+        title: Text(
+          'My Bookings',
+          style: GoogleFonts.poppins(
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        elevation: 4,
+        shadowColor: Colors.black26,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: bookings,
@@ -31,7 +44,14 @@ class MyBookingsPage extends StatelessWidget {
           final docs = snapshot.data!.docs;
 
           if (docs.isEmpty) {
-            return const Center(child: Text('You have no bookings yet.'));
+            return Center(
+              child: Text(
+                'You have no bookings yet.',
+                style: GoogleFonts.poppins(
+                  textStyle: const TextStyle(fontSize: 16),
+                ),
+              ),
+            );
           }
 
           return ListView.builder(
@@ -44,21 +64,37 @@ class MyBookingsPage extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 3,
+                elevation: 4,
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: const Icon(
-                    Icons.airplane_ticket,
-                    color: Colors.blue,
-                  ),
-                  title: Text(
-                    data['flightName'] ?? "Flight",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    "Seat: ${data['seatNumber']}\n"
-                    "Date: ${data['travelDate']}\n"
-                    "Status: ${data['status']}",
+                shadowColor: Colors.black26,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.airplane_ticket,
+                      color: Colors.blue,
+                      size: 32,
+                    ),
+                    title: Text(
+                      data['flightName'] ?? "Flight",
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    subtitle: Text(
+                      "Seat: ${data['seatNumber'] ?? 'N/A'}\n"
+                      "Date: ${data['travelDate'] ?? 'N/A'}\n"
+                      "Status: ${data['status'] ?? 'N/A'}",
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class BookingPage extends StatefulWidget {
   final Map<String, dynamic>? flight;
@@ -275,12 +276,22 @@ class _BookingPageState extends State<BookingPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         title: Text(
-          'Book Flight: ${widget.flight?['name']}',
-          style: const TextStyle(color: Colors.white),
+          'BOOK FLIGHT: ${widget.flight?['NAME']}',
+          style: GoogleFonts.poppins(
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
+        centerTitle: true,
         iconTheme: const IconThemeData(
           color: Colors.white, // back button color
         ),
+        elevation: 4,
+        shadowColor: Colors.black26,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

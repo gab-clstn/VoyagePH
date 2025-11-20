@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:voyageph/screens/booking_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class FlightsPage extends StatefulWidget {
   const FlightsPage({super.key});
@@ -26,8 +27,7 @@ class _FlightsPageState extends State<FlightsPage> {
   }
 
   Future<void> fetchFlights() async {
-    const apiKey =
-        'd827966fb8b55ac8705e21bdad7fdb59'; // replace again if needed
+    const apiKey = 'd827966fb8b55ac8705e21bdad7fdb59';
     final url = Uri.parse(
       'https://api.aviationstack.com/v1/flights?access_key=$apiKey&dep_iata=MNL&limit=10',
     );
@@ -80,15 +80,32 @@ class _FlightsPageState extends State<FlightsPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         centerTitle: true,
+        elevation: 4,
+        shadowColor: Colors.black26,
         title: Text(
-          'Live Flights (Book from MNL)',
-          style: const TextStyle(color: Colors.white),
+          'FLIGHT SCHEDULES',
+          style: GoogleFonts.poppins(
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : error.isNotEmpty
-          ? Center(child: Text('Error fetching flights:\n$error'))
+          ? Center(
+              child: Text(
+                'Error fetching flights:\n$error',
+                style: GoogleFonts.poppins(
+                  textStyle: const TextStyle(color: Colors.redAccent),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
           : RefreshIndicator(
               onRefresh: fetchFlights,
               child: ListView.builder(
@@ -111,28 +128,75 @@ class _FlightsPageState extends State<FlightsPage> {
                     ),
                     elevation: 3,
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.flight_takeoff,
-                        color: Colors.blue,
-                      ),
-                      title: Text(
-                        '$airline ($flightNumber)',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Destination: $arrival\nDeparture: $departureTime\nStatus: ${status.toUpperCase()}',
-                      ),
-                      trailing: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => BookingPage(flight: flight),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.flight_takeoff,
+                            color: Colors.blue,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$airline ($flightNumber)',
+                                  style: GoogleFonts.poppins(
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Destination: $arrival\nDeparture: $departureTime\nStatus: ${status.toUpperCase()}',
+                                  style: GoogleFonts.poppins(
+                                    textStyle: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                        child: const Text('Book'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      BookingPage(flight: flight),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow[700],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: Text(
+                              'Book',
+                              style: GoogleFonts.poppins(
+                                textStyle: const TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
