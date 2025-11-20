@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'booking_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -61,7 +64,7 @@ class _HomePageState extends State<HomePage>
     'Zamboanga',
   ];
 
-  final List<Map<String, String>> heroImages = [
+  final List<Map<String, dynamic>> heroImages = [
     {"name": "Zamboanga", "image": "assets/images/zamboanga.png"},
     {"name": "Siargao", "image": "assets/images/siargao.webp"},
     {"name": "El Nido", "image": "assets/images/el_nido.jpg"},
@@ -204,6 +207,7 @@ class _HomePageState extends State<HomePage>
             left: 16,
             right: 16,
             child: Card(
+              color: Colors.white.withOpacity(0.5),
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -464,63 +468,186 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildDestinationGrid() {
-    final discover = heroImages; // reuse same list
+    final discover = heroImages;
+
+    // Track button visibility for each item
+    List<bool> showButton = List.generate(discover.length, (_) => false);
+    final Random _random = Random();
+
+    // If you haven't added 'hasFlight' to heroImages yet, generate it randomly
+    for (var place in discover) {
+      if (!place.containsKey('hasFlight')) {
+        place['hasFlight'] = _random.nextBool();
+      }
+    }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: discover.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, // 2 per row (mobile-friendly)
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 3 / 4, // tall Cebu-Pac style
-        ),
-        itemBuilder: (_, index) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              children: [
-                Image.asset(
-                  discover[index]["image"]!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          int columns = 2;
+          if (constraints.maxWidth > 900)
+            columns = 4;
+          else if (constraints.maxWidth > 600)
+            columns = 3;
 
-                // Dark overlay
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withOpacity(0.55),
-                        Colors.black.withOpacity(0.2),
-                        Colors.transparent,
-                      ],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                    ),
-                  ),
-                ),
+          return MasonryGridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: columns,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            itemCount: discover.length,
+            itemBuilder: (context, index) {
+              final place = discover[index];
+              final name = place["name"]!;
+              final image = place["image"]!;
+              final hasFlight = place["hasFlight"] as bool;
 
-                // Destination name
-                Positioned(
-                  bottom: 12,
-                  left: 12,
-                  child: Text(
-                    discover[index]["name"]!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      shadows: [Shadow(blurRadius: 6, color: Colors.black)],
+              // Dynamic height
+              double height;
+              if (columns == 2) {
+                height = (index % 2 == 0) ? 240 : 160;
+              } else if (columns == 3) {
+                height = 200 + (index % 3) * 40;
+              } else {
+                height = 180 + (index % 4) * 30;
+              }
+
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  return MouseRegion(
+                    onEnter: (_) => setState(() => showButton[index] = true),
+                    onExit: (_) => setState(() => showButton[index] = false),
+                    child: GestureDetector(
+                      onTap: () => setState(
+                        () => showButton[index] = !showButton[index],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          children: [
+                            // IMAGE
+                            Container(
+                              height: height,
+                              width: double.infinity,
+                              child: Image.asset(image, fit: BoxFit.cover),
+                            ),
+
+                            // DARK OVERLAY WHEN BUTTON SHOWS
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height: height,
+                              width: double.infinity,
+                              color: showButton[index]
+                                  ? Colors.black.withOpacity(0.35)
+                                  : Colors.transparent,
+                            ),
+
+                            // PLACE NAME
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(blurRadius: 6, color: Colors.black),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // BOOK BUTTON IF AVAILABLE
+                            // Inside Stack of each card
+                            if (showButton[index] && hasFlight)
+                              Positioned.fill(
+                                child: Center(
+                                  child: AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 300),
+                                    opacity: showButton[index] ? 1.0 : 0.0,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        // Navigate to BookingPage with the flight/place info
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => BookingPage(
+                                              flight: {
+                                                'name': name,
+                                                'id':
+                                                    'flight_${index}', // you can generate a unique id
+                                                'departure':
+                                                    'Manila', // placeholder, or get real data
+                                                'destination': name,
+                                                'departureTime':
+                                                    '08:00 AM', // placeholder
+                                                'arrivalTime':
+                                                    '10:00 AM', // placeholder
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.yellow[700],
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 26,
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Book",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // NO FLIGHTS AVAILABLE IF NOT
+                            if (showButton[index] && !hasFlight)
+                              Positioned.fill(
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.6),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      "No Flights Available",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
+                  );
+                },
+              );
+            },
           );
         },
       ),

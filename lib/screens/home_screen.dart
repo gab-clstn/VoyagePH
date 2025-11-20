@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'flights_page.dart';
 import 'booking_page.dart';
 import 'profile_page.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _hasBooking = false;
 
   final List<Widget> _pages = [
     HomePage(),
@@ -25,7 +27,40 @@ class _HomeScreenState extends State<HomeScreen> {
     const ProfilePage(),
   ];
 
-  void _onItemTapped(int index) {
+  @override
+  void initState() {
+    super.initState();
+    _checkUserBooking();
+  }
+
+  Future<void> _checkUserBooking() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: widget.user.uid)
+        .limit(1)
+        .get();
+    if (mounted) {
+      setState(() {
+        _hasBooking = snapshot.docs.isNotEmpty;
+      });
+    }
+  }
+
+  void _onItemTapped(int index) async {
+    if (index == 2 && !_hasBooking) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No bookings yet. Please book a flight first.'),
+        ),
+      );
+      return;
+    }
+
+    // If coming back from BookingPage after a new booking, update _hasBooking
+    if (index == 2) {
+      await _checkUserBooking();
+    }
+
     setState(() {
       _selectedIndex = index;
     });
@@ -43,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
           NavigationDestination(
             icon: Icon(Icons.book_online),
-            label: 'Bookings',
+            label: 'Booking',
           ),
           NavigationDestination(
             icon: Icon(Icons.bookmarks),
