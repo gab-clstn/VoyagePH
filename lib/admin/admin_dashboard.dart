@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'admin_drawer.dart';
 import 'booking_requests_screen.dart';
-import 'cancelled_requests_screen.dart'; // <-- new screen
+import 'cancelled_bookings_requests_screen.dart'; // <-- new screen
 import 'flight_management.dart';
 
 class AdminDashboard extends StatelessWidget {

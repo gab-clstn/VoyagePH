@@ -21,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _obscure = true;
 
-  // Configure Google Sign-In based on platform
   final GoogleSignIn _googleSignIn = kIsWeb 
       ? GoogleSignIn(
           clientId: '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
