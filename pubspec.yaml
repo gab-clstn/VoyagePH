@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  intl: ^0.18.1
   firebase_core: ^4.2.0
   firebase_auth: ^6.1.1
   provider: ^6.0.5
@@ -45,11 +46,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   js: ^0.7.2
-<<<<<<< HEAD
   
-=======
-  intl: ^0.20.2
->>>>>>> fb24afe115c12110b24fa2e7a4f02fb4df3a8e22
 
 dev_dependencies:
   flutter_test:
@@ -74,16 +71,7 @@ flutter:
   uses-material-design: true
 
   assets:
-<<<<<<< HEAD
     - lib/assets/google.png
-=======
-    - assets/images/
-
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
->>>>>>> fb24afe115c12110b24fa2e7a4f02fb4df3a8e22
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -21,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _obscure = true;
 
-<<<<<<< HEAD
   // Configure Google Sign-In based on platform
   final GoogleSignIn _googleSignIn = kIsWeb 
       ? GoogleSignIn(
@@ -32,8 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
           serverClientId: '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
         );
 
-=======
->>>>>>> fb24afe115c12110b24fa2e7a4f02fb4df3a8e22
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
@@ -376,7 +373,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
-<<<<<<< HEAD
 
                     const SizedBox(height: 12),
                     if (_error != null)
@@ -426,13 +422,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 1.8,
                           ),
                         ),
-=======
-                    const SizedBox(height: 24),
-                    if (_error != null)
-                      Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 14),
->>>>>>> fb24afe115c12110b24fa2e7a4f02fb4df3a8e22
                       ),
                     ),
 
