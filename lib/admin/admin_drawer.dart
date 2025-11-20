@@ -6,7 +6,7 @@ import '/auth/login_screen.dart'; // <-- add this import
 import 'admin_dashboard.dart';
 
 import 'booking_requests_screen.dart';
-import 'cancelled_bookings_requests_screen.dart';
+import 'cancelled_requests_screen.dart';
 import 'flight_management.dart';
 import 'user_management.dart';
 import 'change_password_screen.dart';
