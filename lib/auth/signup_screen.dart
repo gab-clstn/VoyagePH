@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,14 +14,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String _email = '', _password = '', _confirm = '';
   bool _loading = false;
   String? _error;
-  bool _obscure1 = true;
-  bool _obscure2 = true;
+  bool _obscure1 = true, _obscure2 = true;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    if (_password != _confirmPassword) {
+    if (_password != _confirm) {
       setState(() => _error = "Passwords do not match");
       return;
     }
@@ -33,7 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
@@ -45,100 +43,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _openGmail() async {
-    final uri = Uri.parse('https://mail.google.com');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open Gmail.')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showVerificationDialog(User user) async {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Verify your email'),
-          content: const Text(
-            'A verification email has been sent to your email address. '
-            'Please open Gmail and confirm to complete account creation.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                try {
-                  await user.sendEmailVerification();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Verification email resent.')),
-                    );
-                  }
-                } catch (_) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to resend verification.')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Resend'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Close'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await _openGmail();
-              },
-              child: const Text('Open Gmail'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await user.reload();
-                final u = FirebaseAuth.instance.currentUser;
-                if (u != null && u.emailVerified) {
-                  if (mounted) {
-                    Navigator.of(ctx).pop(); // close dialog
-                    Navigator.of(context).pop(); // close signup screen
-                  }
-                } else {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Email not verified yet.')),
-                    );
-                  }
-                }
-              },
-              child: const Text('I have verified'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
+  // Styled TextField with shadow, rounded corners, floating label
   Widget _styledTextField({
     required String label,
     required bool obscureText,
-    required Function(String?) onSaved,
     String? Function(String?)? validator,
+    void Function(String?)? onSaved,
+    Widget? suffixIcon,
     TextInputType? keyboardType,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
         ],
@@ -147,19 +65,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         keyboardType: keyboardType,
         obscureText: obscureText,
         validator: validator,
-        keyboardType: keyboardType,
         onSaved: onSaved,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.poppins(),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 14,
+            vertical: 16,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF4B7B9A), width: 2),
           ),
           suffixIcon: suffixIcon,
         ),
@@ -169,7 +89,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF4B7B9A);
+    const Color primaryBlue = Color(0xFF4B7B9A);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6F8),
@@ -187,6 +107,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 20),
               Text(
                 "Create Account",
                 style: GoogleFonts.poppins(
@@ -195,41 +116,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 20),
-              Center(
-                child: Icon(Icons.person_add, size: 100, color: primaryBlue),
-              ),
-              const SizedBox(height: 20),
-
+              const SizedBox(height: 30),
               Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // First & Last name fields
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _styledTextField(
-                            label: "First name",
-                            obscureText: false,
-                            keyboardType: TextInputType.name,
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter first name' : null,
-                            onSaved: (v) => _firstName = v?.trim() ?? '',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _styledTextField(
-                            label: "Last name",
-                            obscureText: false,
-                            keyboardType: TextInputType.name,
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter last name' : null,
-                            onSaved: (v) => _lastName = v?.trim() ?? '',
-                          ),
-                        ),
-                      ],
-                    ),
-
                     _styledTextField(
                       label: "Email",
                       obscureText: false,
@@ -267,13 +158,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onPressed: () => setState(() => _obscure2 = !_obscure2),
                       ),
                     ),
-                    const SizedBox(height: 16),
-
+                    const SizedBox(height: 24),
                     if (_error != null)
-                      Text(_error!, style: const TextStyle(color: Colors.red)),
-
-                    const SizedBox(height: 16),
-
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                      ),
+                    const SizedBox(height: 8),
                     _loading
                         ? const CircularProgressIndicator()
                         : SizedBox(
@@ -284,14 +175,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 backgroundColor: primaryBlue,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
                               ),
                               child: Text(
-                                "Sign Up",
+                                "Create Account",
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
