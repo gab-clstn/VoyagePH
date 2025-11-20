@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import 'package:voyageph/screens/guest_page.dart';
 
 class AuthLanding extends StatelessWidget {
   const AuthLanding({super.key});
@@ -95,7 +96,12 @@ class AuthLanding extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GuestWrapper()),
+                    );
+                  },
                   child: Text(
                     "Continue as guest",
                     style: GoogleFonts.poppins(color: Colors.black54),
