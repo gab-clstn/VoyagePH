@@ -119,8 +119,9 @@ class _BookingPageState extends State<BookingPage> {
   Future<void> _bookFlight() async {
     if (!_formKey.currentState!.validate() ||
         _travelDate == null ||
-        _seatNumber == null)
+        _seatNumber == null) {
       return;
+    }
 
     setState(() => _loading = true);
     try {
@@ -172,9 +173,15 @@ class _BookingPageState extends State<BookingPage> {
 
   @override
   void dispose() {
-    for (var c in _nameControllers) c.dispose();
-    for (var c in _contactControllers) c.dispose();
-    for (var c in _emailControllers) c.dispose();
+    for (var c in _nameControllers) {
+      c.dispose();
+    }
+    for (var c in _contactControllers) {
+      c.dispose();
+    }
+    for (var c in _emailControllers) {
+      c.dispose();
+    }
     _notes.dispose();
     super.dispose();
   }
@@ -247,7 +254,7 @@ class _BookingPageState extends State<BookingPage> {
   }) {
     return _styledContainer(
       child: DropdownButtonFormField<T>(
-        value: value,
+        initialValue: value,
         decoration: InputDecoration(
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
@@ -357,7 +364,7 @@ class _BookingPageState extends State<BookingPage> {
                       elevation: 2,
                       borderRadius: BorderRadius.circular(12),
                       child: DropdownButtonFormField<int>(
-                        value: _numPassengers,
+                        initialValue: _numPassengers,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
