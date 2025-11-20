@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -32,7 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
@@ -155,7 +154,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Styled TextField with shadow, rounded corners, floating label
   Widget _styledTextField({
     required String label,
     required bool obscureText,
@@ -235,31 +233,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // First & Last name fields
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _styledTextField(
-                            label: "First name",
-                            obscureText: false,
-                            keyboardType: TextInputType.name,
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter first name' : null,
-                            onSaved: (v) => _firstName = v?.trim() ?? '',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _styledTextField(
-                            label: "Last name",
-                            obscureText: false,
-                            keyboardType: TextInputType.name,
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter last name' : null,
-                            onSaved: (v) => _lastName = v?.trim() ?? '',
-                          ),
-                        ),
-                      ],
-                    ),
-
                     _styledTextField(
                       label: "Email",
                       obscureText: false,
