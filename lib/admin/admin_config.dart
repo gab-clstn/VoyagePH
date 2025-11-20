@@ -8,5 +8,4 @@ const List<String> adminEmails = [
 /// Optional hardcoded fallback admin credentials (insecure — for local/dev only).
 /// If you use this, remove in production and create the admin user in Firebase Authentication.
 const String hardcodedAdminEmail = 'softasmarshmallow@gmail.com';
-const String hardcodedAdminPassword =
-    'admin123'; // <- set to desired dev password
+const String hardcodedAdminPassword = 'admin123'; // <- set to desired dev password
