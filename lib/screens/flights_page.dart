@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:voyageph/screens/booking_page.dart';
 
 class FlightsPage extends StatefulWidget {
   const FlightsPage({super.key});
@@ -123,7 +124,14 @@ class _FlightsPageState extends State<FlightsPage> {
                         'Destination: $arrival\nDeparture: $departureTime\nStatus: ${status.toUpperCase()}',
                       ),
                       trailing: ElevatedButton(
-                        onPressed: () => bookFlight(flight),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BookingPage(flight: flight),
+                            ),
+                          );
+                        },
                         child: const Text('Book'),
                       ),
                     ),
