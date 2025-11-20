@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../admin/admin_config.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -31,40 +34,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
 
       final user = cred.user;
       if (user != null) {
-        // Update display name with first and last name
-        final displayName = '${_firstName.trim()} ${_lastName.trim()}'.trim();
-        try {
-          if (displayName.isNotEmpty) {
-            await user.updateDisplayName(displayName);
-            await user.reload();
-          }
-        } catch (_) {}
-
-        // Use ActionCodeSettings so verification link uses your app/domain
-        final actionSettings = ActionCodeSettings(
-          // URL you want the user to be redirected to after email verification.
-          // Must be in Authorized domains in Firebase console.
-          url: 'https://voyageph-9e067.firebaseapp.com/finishSignUp',
-          // If you want the link to be handled in the app (mobile), set handleCodeInApp true
-          handleCodeInApp: true,
-          iOSBundleId: 'com.yourcompany.youriosbundle', // REPLACE with your iOS bundle id or remove
-          androidPackageName: 'com.yourcompany.yourandroidpkg', // REPLACE with your Android package name
-          androidInstallApp: true,
-          androidMinimumVersion: '21',
-        );
-
-        await user.sendEmailVerification(actionSettings);
-        if (mounted) await _showVerificationDialog(user);
-      } else {
-        setState(() => _error = 'Failed to create user.');
+        // If this account matches a declared admin, create an admin document in Firestore.
+        // NOTE: client-side admin docs are not secure for production — use custom claims/server-side setup.
+        final email = user.email ?? '';
+        if (email == hardcodedAdminEmail || adminEmails.contains(email)) {
+          await FirebaseFirestore.instance.collection('admins').doc(user.uid).set({
+            'uid': user.uid,
+            'email': email,
+            'displayName': user.displayName ?? '',
+            'role': 'superadmin',
+            'isActive': true,
+            'createdAt': FieldValue.serverTimestamp(),
+            'createdBy': 'client-signup',
+          }, SetOptions(merge: true));
+        }
       }
+      if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -154,6 +146,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  // Styled TextField with shadow, rounded corners, floating label
   Widget _styledTextField({
     required String label,
     required bool obscureText,
@@ -237,13 +230,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       label: "Email",
                       obscureText: false,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
+                      validator: (v) => (v == null || !v.contains('@'))
+                          ? 'Enter valid email'
+                          : null,
                       onSaved: (v) => _email = v ?? '',
                     ),
                     _styledTextField(
                       label: "Password",
                       obscureText: _obscure1,
-                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                      validator: (v) => (v == null || v.length < 6)
+                          ? 'Min 6 characters'
+                          : null,
                       onSaved: (v) => _password = v ?? '',
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -255,7 +252,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _styledTextField(
                       label: "Confirm Password",
                       obscureText: _obscure2,
-                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                      validator: (v) => (v == null || v.length < 6)
+                          ? 'Min 6 characters'
+                          : null,
                       onSaved: (v) => _confirm = v ?? '',
                       suffixIcon: IconButton(
                         icon: Icon(
