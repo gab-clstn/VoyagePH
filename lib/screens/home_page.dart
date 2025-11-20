@@ -61,15 +61,21 @@ class _HomePageState extends State<HomePage>
     'Zamboanga',
   ];
 
-  final List<String> heroImages = [
-    "assets/images/cebu.jpg",
-    "assets/images/boracay.jpg",
-    "assets/images/bacolod.jpg",
-    "assets/images/davao.jpg",
-    "assets/images/laoag.jpg",
-    "assets/images/manila.jpg",
-    "assets/images/palawan.jpg",
-    "assets/images/siargao.jpg",
+  final List<Map<String, String>> heroImages = [
+    {"name": "Zamboanga", "image": "assets/images/zamboanga.png"},
+    {"name": "Siargao", "image": "assets/images/siargao.webp"},
+    {"name": "El Nido", "image": "assets/images/el_nido.jpg"},
+    {"name": "Davao", "image": "assets/images/davao.jpg"},
+    {"name": "Coron", "image": "assets/images/coron.webp"},
+    {"name": "Clark", "image": "assets/images/clark.avif"},
+    {"name": "Cauayan", "image": "assets/images/cauayan.jpg"},
+    {"name": "Camiguin", "image": "assets/images/camiguin.jpg"},
+    {"name": "Calbayog", "image": "assets/images/calbayog.jpg"},
+    {"name": "CDO", "image": "assets/images/cdo.jpg"},
+    {"name": "Butuan", "image": "assets/images/butuan.jpg"},
+    {"name": "Cebu", "image": "assets/images/cebu.webp"},
+    {"name": "Bacolod", "image": "assets/images/bacolod.webp"},
+    {"name": "Boracay", "image": "assets/images/boracay.jpg"},
   ];
 
   late AnimationController _zoomController;
@@ -169,7 +175,7 @@ class _HomePageState extends State<HomePage>
                     child: child,
                   ),
                   child: Image.asset(
-                    heroImages[index],
+                    heroImages[index]["image"]!,
                     fit: BoxFit.cover,
                     width: double.infinity,
                   ),
@@ -458,23 +464,19 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildDestinationGrid() {
-    final destinations = [
-      {"name": "Boracay", "image": "assets/images/boracay.jpg"},
-      {"name": "Cebu", "image": "assets/images/cebu.jpg"},
-      {"name": "Palawan", "image": "assets/images/palawan.jpg"},
-      {"name": "Siargao", "image": "assets/images/siargao.jpg"},
-    ];
+    final discover = heroImages; // reuse same list
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: destinations.length,
+        itemCount: discover.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+          crossAxisCount: 2, // 2 per row (mobile-friendly)
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 3 / 4,
+          childAspectRatio: 3 / 4, // tall Cebu-Pac style
         ),
         itemBuilder: (_, index) {
           return ClipRRect(
@@ -482,21 +484,38 @@ class _HomePageState extends State<HomePage>
             child: Stack(
               children: [
                 Image.asset(
-                  destinations[index]["image"]!,
+                  discover[index]["image"]!,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
                 ),
-                Container(color: Colors.black26),
+
+                // Dark overlay
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.55),
+                        Colors.black.withOpacity(0.2),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                    ),
+                  ),
+                ),
+
+                // Destination name
                 Positioned(
                   bottom: 12,
                   left: 12,
                   child: Text(
-                    destinations[index]["name"]!,
+                    discover[index]["name"]!,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      shadows: [Shadow(blurRadius: 6, color: Colors.black)],
                     ),
                   ),
                 ),
