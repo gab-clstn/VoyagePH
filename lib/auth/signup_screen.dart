@@ -14,7 +14,11 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _firstName = '', _lastName = '', _email = '', _password = '', _confirm = '';
+  String _firstName = '',
+      _lastName = '',
+      _email = '',
+      _password = '',
+      _confirm = '';
   bool _loading = false;
   String? _error;
   bool _obscure1 = true, _obscure2 = true;
@@ -45,15 +49,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // NOTE: client-side admin docs are not secure for production — use custom claims/server-side setup.
         final email = user.email ?? '';
         if (email == hardcodedAdminEmail || adminEmails.contains(email)) {
-          await FirebaseFirestore.instance.collection('admins').doc(user.uid).set({
-            'uid': user.uid,
-            'email': email,
-            'displayName': user.displayName ?? '',
-            'role': 'superadmin',
-            'isActive': true,
-            'createdAt': FieldValue.serverTimestamp(),
-            'createdBy': 'client-signup',
-          }, SetOptions(merge: true));
+          await FirebaseFirestore.instance
+              .collection('admins')
+              .doc(user.uid)
+              .set({
+                'uid': user.uid,
+                'email': email,
+                'displayName': user.displayName ?? '',
+                'role': 'superadmin',
+                'isActive': true,
+                'createdAt': FieldValue.serverTimestamp(),
+                'createdBy': 'client-signup',
+              }, SetOptions(merge: true));
         }
       }
       if (mounted) Navigator.of(context).pop();
@@ -70,9 +77,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open Gmail.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open Gmail.')));
       }
     }
   }
@@ -96,13 +103,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   await user.sendEmailVerification();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Verification email resent.')),
+                      const SnackBar(
+                        content: Text('Verification email resent.'),
+                      ),
                     );
                   }
                 } catch (_) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to resend verification.')),
+                      const SnackBar(
+                        content: Text('Failed to resend verification.'),
+                      ),
                     );
                   }
                 }

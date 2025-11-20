@@ -18,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    const HomePage(),
+    HomePage(),
     const FlightsPage(),
     const BookingPage(),
     const MyBookingsPage(),
@@ -38,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
@@ -48,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           NavigationDestination(
             icon: Icon(Icons.bookmarks),
-            label: 'MyBookings',
+            label: 'My Bookings',
           ),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
