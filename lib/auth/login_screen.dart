@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../admin/admin_config.dart';
+import '../admin/admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,16 +24,30 @@ class _LoginScreenState extends State<LoginScreen> {
     _formKey.currentState!.save();
 
     setState(() {
-      _loading = true;
       _error = null;
+      _loading = true;
     });
+
+    // DEV: check hardcoded admin first (no Firebase needed)
+    if (_email.trim() == hardcodedAdminEmail && _password == hardcodedAdminPassword) {
+      if (mounted) {
+        setState(() => _loading = false);
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const AdminDashboard()));
+      }
+      return;
+    }
 
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
-      if (mounted) Navigator.of(context).pop();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && adminEmails.contains(user.email)) {
+        if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const AdminDashboard()));
+      } else {
+        if (mounted) Navigator.of(context).pop();
+      }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
