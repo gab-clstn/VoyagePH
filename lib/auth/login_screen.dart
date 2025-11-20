@@ -19,79 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _obscure = true;
 
-  Future<void> _sendPasswordReset(String email) async {
-    if (email.trim().isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter an email')));
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset sent to $email')));
-    } on FirebaseAuthException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Failed to send reset')));
-    }
-  }
-
-  Future<void> _showForgotPasswordDialog() async {
-    final ctrl = TextEditingController(text: _email);
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        // Dialog with fixed size (not resizable)
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: 320,
-              maxWidth: 420,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Forgot Password', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: ctrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text('Cancel', style: GoogleFonts.poppins()),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          final e = ctrl.text.trim();
-                          Navigator.of(ctx).pop();
-                          _sendPasswordReset(e);
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B7B9A)),
-                        child: Text('Send', style: GoogleFonts.poppins(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
@@ -236,13 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           _obscure ? Icons.visibility_off : Icons.visibility,
                         ),
                         onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _showForgotPasswordDialog,
-                        child: Text('Forgot password?', style: GoogleFonts.poppins(color: primaryBlue)),
                       ),
                     ),
                     const SizedBox(height: 24),
