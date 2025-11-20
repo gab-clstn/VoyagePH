@@ -1,57 +1,174 @@
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:voyageph/screens/booking_page.dart';
+import 'booking_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FlightsPage extends StatefulWidget {
-  const FlightsPage({super.key});
+  final String? from;
+  final String? to;
+  final DateTime? departureDate;
+
+  const FlightsPage({super.key, this.from, this.to, this.departureDate});
 
   @override
   State<FlightsPage> createState() => _FlightsPageState();
 }
 
 class _FlightsPageState extends State<FlightsPage> {
-  List<dynamic> flights = [];
-  bool loading = true;
-  String error = '';
-
+  List<Map<String, dynamic>> flights = [];
   final user = FirebaseAuth.instance.currentUser;
+  final Random _random = Random();
+
+  final List<String> locations = [
+    'Bacolod',
+    'Bohol',
+    'Boracay (Caticlan)',
+    'Butuan',
+    'Cagayan De Oro',
+    'Calbayog',
+    'Camiguin',
+    'Cauayan',
+    'Cebu',
+    'Clark',
+    'Coron (Basuanga)',
+    'Cotabato',
+    'Davao',
+    'Dipolog',
+    'Dumaguete',
+    'El Nido',
+    'General Santos',
+    'Iloilo',
+    'Kalibo',
+    'Laoag',
+    'Legazpi (Daraga)',
+    'Manila',
+    'Masbate',
+    'Naga',
+    'Ozamiz',
+    'Pagadian',
+    'Puerto Princesa',
+    'Roxas',
+    'San Jose (Mindoro)',
+    'San Vicente (Port Barton)',
+    'Siargao',
+    'Surigao',
+    'Tacloban',
+    'Tawi-Tawi',
+    'Tuguegarao',
+    'Virac',
+    'Zamboanga',
+  ];
 
   @override
   void initState() {
     super.initState();
-    fetchFlights();
+    generateFlights();
   }
 
-  Future<void> fetchFlights() async {
-    const apiKey = 'd827966fb8b55ac8705e21bdad7fdb59';
-    final url = Uri.parse(
-      'https://api.aviationstack.com/v1/flights?access_key=$apiKey&dep_iata=MNL&limit=10',
+  String calculateArrival(String depTime, int durationHours) {
+    // depTime e.g., "06:00 AM"
+    final parts = depTime.split(' '); // ["06:00", "AM"]
+    final timeParts = parts[0].split(':'); // ["06","00"]
+    int hour = int.parse(timeParts[0]);
+    int minute = int.parse(timeParts[1]);
+    final ampm = parts[1];
+
+    // convert to 24h
+    if (ampm == "PM" && hour != 12) hour += 12;
+    if (ampm == "AM" && hour == 12) hour = 0;
+
+    // add duration
+    hour = (hour + durationHours) % 24;
+
+    // convert back to 12h format
+    String newAmpm = hour >= 12 ? "PM" : "AM";
+    int displayHour = hour % 12;
+    if (displayHour == 0) displayHour = 12;
+
+    return "${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $newAmpm";
+  }
+
+  void generateFlights() {
+    final airlines = [
+      'Philippine Airlines',
+      'Cebu Pacific',
+      'AirAsia',
+      'PAL Express',
+    ];
+    final times = [
+      '06:00 AM',
+      '06:30 AM',
+      '07:00 AM',
+      '08:00 AM',
+      '09:45 AM',
+      '10:00 AM',
+      '01:00 PM',
+      '03:00 PM',
+      '06:00 PM',
+    ];
+
+    List<Map<String, dynamic>> tempFlights = List.generate(
+      5 + _random.nextInt(5), // 5-9 flights
+      (index) {
+        String from;
+        String to;
+
+        if (widget.from != null && widget.to != null) {
+          // If coming from search, use the specified from/to
+          from = widget.from!;
+          to = widget.to!;
+        } else {
+          // Random flight: pick two different random locations
+          from = locations[_random.nextInt(locations.length)];
+          to = locations[_random.nextInt(locations.length)];
+          while (to == from) {
+            to = locations[_random.nextInt(locations.length)];
+          }
+        }
+
+        final depTime = times[_random.nextInt(times.length)];
+
+        // Parse hour & minute safely
+        final depHour = int.parse(depTime.split(':')[0]);
+        final depMinute = int.parse(depTime.split(':')[1].split(' ')[0]);
+        final depPeriod = depTime.split(' ')[1];
+
+        // Convert to 24-hour format
+        int depHour24 = depHour;
+        if (depPeriod == 'PM' && depHour != 12) depHour24 += 12;
+        if (depPeriod == 'AM' && depHour == 12) depHour24 = 0;
+
+        final arrHour24 = (depHour24 + 2) % 24;
+        final arrTime =
+            '${arrHour24.toString().padLeft(2, '0')}:${depMinute.toString().padLeft(2, '0')}';
+
+        final now = DateTime.now();
+        final departureDateTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          depHour24,
+          depMinute,
+        );
+
+        return {
+          'airline': airlines[_random.nextInt(airlines.length)],
+          'flightNumber': 'PH${100 + _random.nextInt(900)}',
+          'departure': from,
+          'destination': to,
+          'departureTime':
+              '${departureDateTime.hour.toString().padLeft(2, '0')}:${departureDateTime.minute.toString().padLeft(2, '0')}',
+          'arrivalTime': arrTime,
+          'status': _random.nextBool() ? 'Scheduled' : 'Delayed',
+        };
+      },
     );
 
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          flights = data['data'] ?? [];
-          loading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Server responded with ${response.statusCode}';
-          loading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        error = e.toString();
-        loading = false;
-      });
-    }
+    setState(() {
+      flights = tempFlights;
+    });
   }
 
   Future<void> bookFlight(Map<String, dynamic> flight) async {
@@ -60,11 +177,11 @@ class _FlightsPageState extends State<FlightsPage> {
     final bookings = FirebaseFirestore.instance.collection('bookings');
     await bookings.add({
       'userId': user!.uid,
-      'airline': flight['airline']?['name'] ?? 'Unknown Airline',
-      'flightNumber': flight['flight']?['iata'] ?? 'N/A',
-      'arrival': flight['arrival']?['airport'] ?? 'Unknown',
-      'departure': flight['departure']?['airport'] ?? 'Unknown',
-      'departureTime': flight['departure']?['scheduled'] ?? '',
+      'airline': flight['airline'],
+      'flightNumber': flight['flightNumber'],
+      'arrival': flight['destination'],
+      'departure': flight['departure'],
+      'departureTime': flight['departureTime'],
       'status': 'Booked',
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -83,7 +200,9 @@ class _FlightsPageState extends State<FlightsPage> {
         elevation: 4,
         shadowColor: Colors.black26,
         title: Text(
-          'FLIGHT SCHEDULES',
+          widget.from != null && widget.to != null
+              ? '${widget.from} → ${widget.to} Flights'
+              : 'FLIGHT SCHEDULES',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
               color: Colors.white,
@@ -94,34 +213,15 @@ class _FlightsPageState extends State<FlightsPage> {
           ),
         ),
       ),
-      body: loading
+      body: flights.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : error.isNotEmpty
-          ? Center(
-              child: Text(
-                'Error fetching flights:\n$error',
-                style: GoogleFonts.poppins(
-                  textStyle: const TextStyle(color: Colors.redAccent),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            )
           : RefreshIndicator(
-              onRefresh: fetchFlights,
+              onRefresh: () async => generateFlights(),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: flights.length,
                 itemBuilder: (context, index) {
                   final flight = flights[index];
-                  final airline =
-                      flight['airline']?['name'] ?? 'Unknown Airline';
-                  final flightNumber = flight['flight']?['iata'] ?? 'N/A';
-                  final arrival =
-                      flight['arrival']?['airport'] ?? 'Unknown Airport';
-                  final status = flight['flight_status'] ?? 'Scheduled';
-                  final departureTime =
-                      flight['departure']?['scheduled'] ?? 'Unknown';
-
                   return Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -144,7 +244,7 @@ class _FlightsPageState extends State<FlightsPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '$airline ($flightNumber)',
+                                  '${flight['airline']} (${flight['flightNumber']})',
                                   style: GoogleFonts.poppins(
                                     textStyle: const TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -154,7 +254,9 @@ class _FlightsPageState extends State<FlightsPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Destination: $arrival\nDeparture: $departureTime\nStatus: ${status.toUpperCase()}',
+                                  'Departure: ${flight['departureTime']} from ${flight['departure']}\n'
+                                  'Arrival: ${flight['arrivalTime']} at ${flight['destination']}\n'
+                                  'Status: ${flight['status']}',
                                   style: GoogleFonts.poppins(
                                     textStyle: const TextStyle(
                                       fontSize: 14,
@@ -168,6 +270,7 @@ class _FlightsPageState extends State<FlightsPage> {
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () {
+                              // Navigate to BookingPage with the selected flight
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(

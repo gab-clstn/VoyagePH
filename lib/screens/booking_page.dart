@@ -269,7 +269,7 @@ class _BookingPageState extends State<BookingPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         title: Text(
-          'BOOK FLIGHT: ${widget.flight?['NAME']}',
+          'BOOK FLIGHT: ${widget.flight?['airline']} (${widget.flight?['flightNumber']})',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
               color: Colors.white,
@@ -279,6 +279,7 @@ class _BookingPageState extends State<BookingPage> {
             ),
           ),
         ),
+
         centerTitle: true,
         iconTheme: const IconThemeData(
           color: Colors.white, // back button color

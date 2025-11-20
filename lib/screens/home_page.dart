@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'booking_page.dart';
+import 'flights_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,6 +17,11 @@ class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  bool fromError = false;
+  bool toError = false;
+  bool departureError = false;
+  bool returnError = false;
 
   String tripType = 'Round Trip';
   DateTime? departureDate;
@@ -232,11 +238,13 @@ class _HomePageState extends State<HomePage>
                       onChanged: (val) {
                         setState(() {
                           fromLocation = val;
+                          fromError = false;
                           if (toLocation == val) toLocation = null;
                         });
                       },
+                      isError: fromError, // HIGHLIGHT ERROR
                     ),
-                    const SizedBox(height: 12),
+
                     _customDropdownField(
                       label: 'To',
                       selected: toLocation,
@@ -246,10 +254,13 @@ class _HomePageState extends State<HomePage>
                       onChanged: (val) {
                         setState(() {
                           toLocation = val;
+                          toError = false;
                           if (fromLocation == val) fromLocation = null;
                         });
                       },
+                      isError: toError, // HIGHLIGHT ERROR
                     ),
+
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -258,23 +269,53 @@ class _HomePageState extends State<HomePage>
                             'Departure',
                             departureDate,
                             () => _selectDate(context, true),
+                            isError: departureError, // highlights red if empty
                           ),
                         ),
+
                         const SizedBox(width: 10),
                         Expanded(
                           child: _dateField(
                             'Return',
                             returnDate,
                             () => _selectDate(context, false),
+                            isError: returnError && tripType == 'Round Trip',
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Validate all required fields
+                          setState(() {
+                            fromError = fromLocation == null;
+                            toError = toLocation == null;
+                            departureError = departureDate == null;
+                            returnError =
+                                tripType == 'Round Trip' && returnDate == null;
+                          });
+
+                          // Only navigate if all required fields are filled
+                          if (!fromError &&
+                              !toError &&
+                              !departureError &&
+                              !returnError) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FlightsPage(
+                                  from: fromLocation!,
+                                  to: toLocation!,
+                                  departureDate: departureDate!,
+                                ),
+                              ),
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.yellow[700],
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -335,6 +376,7 @@ class _HomePageState extends State<HomePage>
     required String? selected,
     required List<String> options,
     required ValueChanged<String?> onChanged,
+    bool isError = false, // NEW
   }) {
     return GestureDetector(
       onTap: () async {
@@ -408,7 +450,10 @@ class _HomePageState extends State<HomePage>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
+          border: Border.all(
+            color: isError ? Colors.red : Colors.grey.shade400,
+            width: 2,
+          ),
           borderRadius: BorderRadius.circular(20),
           color: Colors.grey[100],
         ),
@@ -428,13 +473,18 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _dateField(String label, DateTime? date, VoidCallback onTap) {
+  Widget _dateField(
+    String label,
+    DateTime? date,
+    VoidCallback onTap, {
+    bool isError = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
+          border: Border.all(color: isError ? Colors.red : Colors.grey),
           borderRadius: BorderRadius.circular(10),
           color: Colors.grey[100],
         ),
