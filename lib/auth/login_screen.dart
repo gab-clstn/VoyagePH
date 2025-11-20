@@ -21,80 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _obscure = true;
 
-<<<<<<< HEAD
-  Future<void> _sendPasswordReset(String email) async {
-    if (email.trim().isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter an email')));
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset sent to $email')));
-    } on FirebaseAuthException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Failed to send reset')));
-    }
-  }
-
-  Future<void> _showForgotPasswordDialog() async {
-    final ctrl = TextEditingController(text: _email);
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        // Dialog with fixed size (not resizable)
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: 320,
-              maxWidth: 420,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Forgot Password', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: ctrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text('Cancel', style: GoogleFonts.poppins()),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          final e = ctrl.text.trim();
-                          Navigator.of(ctx).pop();
-                          _sendPasswordReset(e);
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B7B9A)),
-                        child: Text('Send', style: GoogleFonts.poppins(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-=======
   // Configure Google Sign-In based on platform
   final GoogleSignIn _googleSignIn = kIsWeb 
       ? GoogleSignIn(
@@ -104,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
       : GoogleSignIn(
           serverClientId: '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
         );
->>>>>>> d669c86 (may google sign in and forgot password na need pa ayusin ung design)
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -115,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
     });
 
+    // DEV: check hardcoded admin first (no Firebase needed)
     if (_email.trim() == hardcodedAdminEmail && _password == hardcodedAdminPassword) {
       if (mounted) {
         setState(() => _loading = false);
@@ -149,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    // Show dialog to enter email for password reset
     final emailController = TextEditingController(text: _email);
     
     await showDialog(
@@ -179,12 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 fillColor: Colors.grey[50],
               ),
               keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty || !value.contains('@')) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
             ),
           ],
         ),
@@ -344,6 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Reusable styled TextField with shadow & floating label
   Widget _styledTextField({
     required String label,
     required bool obscureText,
@@ -369,7 +289,10 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -405,9 +328,22 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              Text("Log In", style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.black87)),
+              Text(
+                "Log In",
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
               const SizedBox(height: 20),
-              const Center(child: Icon(Icons.person_pin, size: 90, color: primaryBlue)),
+              const Center(
+                child: Icon(
+                  Icons.person_pin,
+                  size: 90,
+                  color: primaryBlue,
+                ),
+              ),
               const SizedBox(height: 30),
 
               Form(
@@ -418,36 +354,34 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: "Email",
                       obscureText: false,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
+                      validator: (v) => (v == null || !v.contains('@'))
+                          ? 'Enter valid email'
+                          : null,
                       onSaved: (v) => _email = v ?? '',
                     ),
                     _styledTextField(
                       label: "Password",
                       obscureText: _obscure,
-                      validator: (v) => (v == null || v.length < 6) ? 'Password too short' : null,
+                      validator: (v) => (v == null || v.length < 6)
+                          ? 'Min 6 characters'
+                          : null,
                       onSaved: (v) => _password = v ?? '',
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                        icon: Icon(
+                          _obscure ? Icons.visibility_off : Icons.visibility,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
-<<<<<<< HEAD
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _showForgotPasswordDialog,
-                        child: Text('Forgot password?', style: GoogleFonts.poppins(color: primaryBlue)),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-=======
 
                     const SizedBox(height: 12),
->>>>>>> d669c86 (may google sign in and forgot password na need pa ayusin ung design)
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 14)),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 14),
+                        ),
                       ),
 
                     Align(
@@ -473,12 +407,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         icon: Image.asset('lib/assets/google.png', height: 24),
                         label: Text(
                           "Sign in with Google",
-                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: const BorderSide(color: Color(0xFF4B7B9A), width: 1.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          side: const BorderSide(
+                            color: Color(0xFF4B7B9A),
+                            width: 1.8,
+                          ),
                         ),
                       ),
                     ),
@@ -494,10 +436,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryBlue,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                               ),
-                              child: Text("Log In", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
+                              child: Text(
+                                "Log In",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ),
                   ],
