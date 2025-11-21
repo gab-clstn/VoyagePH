@@ -247,8 +247,8 @@ class ContactUsScreen extends StatelessWidget {
               final uri = Uri(scheme: 'mailto', path: 'support@voyageph.example', queryParameters: {'subject': 'Support Request'});
               if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
             },
-            child: Text('Open Mail App', style: GoogleFonts.poppins()),
             style: ElevatedButton.styleFrom(backgroundColor: primary),
+            child: Text('Open Mail App', style: GoogleFonts.poppins()),
           )
         ]),
       ),
@@ -352,8 +352,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _sendReset,
-                    child: Text('Send Reset', style: GoogleFonts.poppins()),
                     style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    child: Text('Send Reset', style: GoogleFonts.poppins()),
                   ),
                 ),
         ]),
@@ -446,7 +446,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Request account deletion via email (recommended) or delete now (requires re-entering password).', style: GoogleFonts.poppins()),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: _requestDeletionEmail, child: Text('Request Deletion via Email', style: GoogleFonts.poppins()), style: ElevatedButton.styleFrom(backgroundColor: primary)),
+          ElevatedButton(onPressed: _requestDeletionEmail, style: ElevatedButton.styleFrom(backgroundColor: primary), child: Text('Request Deletion via Email', style: GoogleFonts.poppins())),
           const SizedBox(height: 20),
           Text('Delete now (requires password)', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
@@ -454,7 +454,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           const SizedBox(height: 12),
           if (_message != null) Text(_message!, style: GoogleFonts.poppins(color: Colors.red)),
           const SizedBox(height: 12),
-          _loading ? const CircularProgressIndicator() : ElevatedButton(onPressed: _deleteNow, child: Text('Delete Account Now', style: GoogleFonts.poppins()), style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent)),
+          _loading ? const CircularProgressIndicator() : ElevatedButton(onPressed: _deleteNow, style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent), child: Text('Delete Account Now', style: GoogleFonts.poppins())),
         ]),
       ),
     );
@@ -573,7 +573,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const SizedBox(height: 16),
           if (_message != null) Text(_message!, style: GoogleFonts.poppins(color: Colors.green)),
           const SizedBox(height: 12),
-          _loading ? const CircularProgressIndicator() : ElevatedButton(onPressed: _save, child: Text('Save', style: GoogleFonts.poppins()), style: ElevatedButton.styleFrom(backgroundColor: primary, minimumSize: const Size(double.infinity, 48))),
+          _loading ? const CircularProgressIndicator() : ElevatedButton(onPressed: _save, style: ElevatedButton.styleFrom(backgroundColor: primary, minimumSize: const Size(double.infinity, 48)), child: Text('Save', style: GoogleFonts.poppins())),
         ]),
       ),
     );
@@ -671,8 +671,8 @@ class InAppEmailScreen extends StatelessWidget {
                 final gmail = Uri.parse('https://mail.google.com/mail/u/0/#search/${Uri.encodeComponent(subject)}');
                 if (await canLaunchUrl(gmail)) await launchUrl(gmail, mode: LaunchMode.externalApplication);
               },
-              child: Text('Open in Gmail', style: GoogleFonts.poppins()),
               style: ElevatedButton.styleFrom(backgroundColor: primary),
+              child: Text('Open in Gmail', style: GoogleFonts.poppins()),
             ),
           ]),
         ]),
