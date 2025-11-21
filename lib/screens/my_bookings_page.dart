@@ -164,9 +164,38 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   final data = docs[index].data() as Map<String, dynamic>;
                   final flightName =
                       '${data['airline'] ?? ''} ${data['flightNumber'] ?? ''}';
-                  final passengers = (data['passengers'] as List<dynamic>?)
-                      ?.map((p) => p['name'] ?? '')
-                      .join(', ');
+
+                  // Build passenger names and seat display.
+                  final passengerList = (data['passengers'] as List<dynamic>?) ?? [];
+                  final passengers = passengerList.isNotEmpty
+                      ? passengerList
+                          .map((p) => (p as Map<String, dynamic>)['name'] ?? '')
+                          .where((n) => n.isNotEmpty)
+                          .join(', ')
+                      : (data['passengerNames'] as String?) ?? '';
+
+                  // Seats: prefer per-passenger seatNumber when available, otherwise fall back to top-level seatNumber.
+                  String seats;
+                  if (passengerList.isNotEmpty) {
+                    final perSeats = passengerList.map((p) {
+                      final s = (p as Map<String, dynamic>)['seatNumber'];
+                      return s != null && s.toString().isNotEmpty ? s.toString() : null;
+                    }).toList();
+
+                    final hasAnyPerSeat = perSeats.any((s) => s != null);
+                    if (hasAnyPerSeat) {
+                      final fallback = data['seatNumber']?.toString() ?? 'N/A';
+                      seats = perSeats.map((s) => s ?? fallback).join(', ');
+                    } else {
+                      seats = data['seatNumber'] != null && data['seatNumber'].toString().isNotEmpty
+                          ? data['seatNumber'].toString()
+                          : 'N/A';
+                    }
+                  } else {
+                    seats = data['seatNumber'] != null && data['seatNumber'].toString().isNotEmpty
+                        ? data['seatNumber'].toString()
+                        : 'N/A';
+                  }
 
                   final status = (data['status'] ?? '').toString().toLowerCase();
 
@@ -180,6 +209,19 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   // Only add red border if this is the flight just cancelled
                   final highlightRed = _justCancelledBookingId == docs[index].id;
 
+                  // subtitle styles: base and bold label
+                  final baseStyle = GoogleFonts.poppins(
+                    textStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+                  );
+                  final labelStyle = baseStyle.copyWith(fontWeight: FontWeight.bold);
+
+                  // map status to colors: confirmed -> green, rejected/cancelled -> red, pending -> orange
+                  final statusColor = status == 'confirmed'
+                      ? Colors.green
+                      : (status == 'rejected' || status == 'cancelled')
+                          ? Colors.red
+                          : (status == 'pending' ? Colors.orange : Colors.black87);
+
                   return Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -187,11 +229,13 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                           ? const BorderSide(color: Colors.redAccent, width: 2)
                           : BorderSide.none,
                     ),
-                    color: status == 'cancelled'
-                        ? Colors.red.withOpacity(0.1)
-                        : status == 'pending'
-                            ? Colors.orange.withOpacity(0.1)
-                            : Colors.white,
+                    color: status == 'confirmed'
+                        ? Colors.green.withOpacity(0.08)
+                        : (status == 'rejected' || status == 'cancelled')
+                            ? Colors.red.withOpacity(0.08)
+                            : status == 'pending'
+                                ? Colors.orange.withOpacity(0.08)
+                                : Colors.white,
                     elevation: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     shadowColor: Colors.black26,
@@ -207,17 +251,32 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                 fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ),
-                        subtitle: Text(
-                          "Passengers: ${passengers ?? 'N/A'}\n"
-                          "Seat: ${data['seatNumber'] ?? 'N/A'}\n"
-                          "Class: ${data['seatClass'] ?? 'N/A'}\n"
-                          "Date: ${data['travelDate']?.toString().split('T')[0] ?? 'N/A'}\n"
-                          "Status: ${data['status'] ?? 'N/A'}\n"
-                          "Total: ₱${(data['fareTotal'] ?? 0).toString()}",
-                          style: GoogleFonts.poppins(
-                            textStyle:
-                                const TextStyle(fontSize: 14, color: Colors.black87),
-                          ),
+                        subtitle: Text.rich(
+                          TextSpan(style: baseStyle, children: [
+                            TextSpan(text: 'Passenger: ', style: labelStyle),
+                            TextSpan(text: passengers.isNotEmpty ? passengers : 'N/A'),
+                            const TextSpan(text: '\n'),
+                            TextSpan(text: 'Seat: ', style: labelStyle),
+                            TextSpan(text: seats),
+                            const TextSpan(text: '\n'),
+                            TextSpan(text: 'Class: ', style: labelStyle),
+                            TextSpan(text: data['seatClass'] ?? 'N/A'),
+                            const TextSpan(text: '\n'),
+                            TextSpan(text: 'Date: ', style: labelStyle),
+                            TextSpan(
+                                text: data['travelDate']?.toString().split('T')[0] ??
+                                    'N/A'),
+                            const TextSpan(text: '\n'),
+                            TextSpan(text: 'Status: ', style: labelStyle),
+                            TextSpan(
+                                text: (data['status'] ?? 'N/A').toString(),
+                                style: baseStyle.copyWith(color: statusColor)),
+                            const TextSpan(text: '\n'),
+                            TextSpan(text: 'Total: ', style: labelStyle),
+                            TextSpan(
+                                text:
+                                    '₱${(data['fareTotal'] ?? 0).toString()}'),
+                          ]),
                         ),
                         trailing: (status == 'pending' || status == 'confirmed')
                             ? IconButton(
