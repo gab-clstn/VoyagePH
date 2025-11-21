@@ -475,7 +475,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _loading ? null : _signInWithGoogle,
-                        icon: Image.asset('lib/assets/google.png', height: 24),
+                        icon: Image.asset('assets/images/google.png', height: 24),
                         label: Text(
                           "Sign in with Google",
                           style: GoogleFonts.poppins(
