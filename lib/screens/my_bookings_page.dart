@@ -60,6 +60,14 @@ class MyBookingsPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
 
+              // Combine airline + flightNumber as flightName
+              final flightName = '${data['airline'] ?? ''} ${data['flightNumber'] ?? ''}';
+
+              // Collect passenger names (optional)
+              final passengers = (data['passengers'] as List<dynamic>?)
+                  ?.map((p) => p['name'] ?? '')
+                  .join(', ');
+
               return Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -76,7 +84,7 @@ class MyBookingsPage extends StatelessWidget {
                       size: 32,
                     ),
                     title: Text(
-                      data['flightName'] ?? "Flight",
+                      flightName,
                       style: GoogleFonts.poppins(
                         textStyle: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -85,9 +93,12 @@ class MyBookingsPage extends StatelessWidget {
                       ),
                     ),
                     subtitle: Text(
+                      "Passengers: ${passengers ?? 'N/A'}\n"
                       "Seat: ${data['seatNumber'] ?? 'N/A'}\n"
-                      "Date: ${data['travelDate'] ?? 'N/A'}\n"
-                      "Status: ${data['status'] ?? 'N/A'}",
+                      "Class: ${data['seatClass'] ?? 'N/A'}\n"
+                      "Date: ${data['travelDate']?.toString().split('T')[0] ?? 'N/A'}\n"
+                      "Status: ${data['status'] ?? 'N/A'}\n"
+                      "Total: ₱${(data['fareTotal'] ?? 0).toString()}",
                       style: GoogleFonts.poppins(
                         textStyle: const TextStyle(
                           fontSize: 14,
