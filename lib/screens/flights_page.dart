@@ -1,57 +1,146 @@
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:voyageph/screens/booking_page.dart';
+import 'booking_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FlightsPage extends StatefulWidget {
-  const FlightsPage({super.key});
+  final String? from;
+  final String? to;
+  final DateTime? departureDate;
+
+  const FlightsPage({super.key, this.from, this.to, this.departureDate});
 
   @override
   State<FlightsPage> createState() => _FlightsPageState();
 }
 
 class _FlightsPageState extends State<FlightsPage> {
-  List<dynamic> flights = [];
-  bool loading = true;
-  String error = '';
-
+  List<Map<String, dynamic>> flights = [];
   final user = FirebaseAuth.instance.currentUser;
+  final Random _random = Random();
+
+  final List<String> locations = [
+    'Bacolod',
+    'Bohol',
+    'Boracay (Caticlan)',
+    'Butuan',
+    'Cagayan De Oro',
+    'Calbayog',
+    'Camiguin',
+    'Cauayan',
+    'Cebu',
+    'Clark',
+    'Coron (Basuanga)',
+    'Cotabato',
+    'Davao',
+    'Dipolog',
+    'Dumaguete',
+    'El Nido',
+    'General Santos',
+    'Iloilo',
+    'Kalibo',
+    'Laoag',
+    'Legazpi (Daraga)',
+    'Manila',
+    'Masbate',
+    'Naga',
+    'Ozamiz',
+    'Pagadian',
+    'Puerto Princesa',
+    'Roxas',
+    'San Jose (Mindoro)',
+    'San Vicente (Port Barton)',
+    'Siargao',
+    'Surigao',
+    'Tacloban',
+    'Tawi-Tawi',
+    'Tuguegarao',
+    'Virac',
+    'Zamboanga',
+  ];
 
   @override
   void initState() {
     super.initState();
-    fetchFlights();
+    generateFlights();
   }
 
-  Future<void> fetchFlights() async {
-    const apiKey = 'd827966fb8b55ac8705e21bdad7fdb59';
-    final url = Uri.parse(
-      'https://api.aviationstack.com/v1/flights?access_key=$apiKey&dep_iata=MNL&limit=10',
+  void generateFlights() {
+    final airlines = [
+      'Philippine Airlines',
+      'Cebu Pacific',
+      'AirAsia',
+      'PAL Express',
+    ];
+
+    List<Map<String, dynamic>> tempFlights = List.generate(
+      5 + _random.nextInt(5),
+      (index) {
+        String from;
+        String to;
+
+        if (widget.from != null && widget.to != null) {
+          from = widget.from!;
+          to = widget.to!;
+        } else {
+          from = locations[_random.nextInt(locations.length)];
+          to = locations[_random.nextInt(locations.length)];
+          while (to == from) {
+            to = locations[_random.nextInt(locations.length)];
+          }
+        }
+
+        // Random departure hour and minute
+        final depHour = 6 + _random.nextInt(12); // 6AM-5PM
+        final depMinute = [0, 15, 30, 45][_random.nextInt(4)];
+
+        final depDateTime = DateTime(
+          DateTime.now().year,
+          DateTime.now().month,
+          DateTime.now().day,
+          depHour,
+          depMinute,
+        );
+
+        // Random duration 1h-5h + 0,15,30,45 min
+        final durationMinutes =
+            (1 + _random.nextInt(5)) * 60 + [0, 15, 30, 45][_random.nextInt(4)];
+
+        final arrDateTime = depDateTime.add(Duration(minutes: durationMinutes));
+
+        String formatTime(DateTime dt) {
+          final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+          final minute = dt.minute.toString().padLeft(2, '0');
+          final period = dt.hour >= 12 ? 'PM' : 'AM';
+          return '$hour:$minute $period';
+        }
+
+        final departureTimeStr = formatTime(depDateTime);
+        final arrivalTimeStr = formatTime(arrDateTime);
+
+        final hours = durationMinutes ~/ 60;
+        final minutes = durationMinutes % 60;
+        final durationStr = '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+
+        return {
+          'airline': airlines[_random.nextInt(airlines.length)],
+          'flightNumber': 'PH${100 + _random.nextInt(900)}',
+          'departure': from,
+          'destination': to,
+          'departureTime': departureTimeStr,
+          'arrivalTime': arrivalTimeStr,
+          'duration': durationStr,
+          'status': _random.nextBool() ? 'Scheduled' : 'Delayed',
+          'price': 10399 + _random.nextInt(4000),
+        };
+      },
     );
 
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          flights = data['data'] ?? [];
-          loading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Server responded with ${response.statusCode}';
-          loading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        error = e.toString();
-        loading = false;
-      });
-    }
+    setState(() {
+      flights = tempFlights;
+    });
   }
 
   Future<void> bookFlight(Map<String, dynamic> flight) async {
@@ -60,149 +149,223 @@ class _FlightsPageState extends State<FlightsPage> {
     final bookings = FirebaseFirestore.instance.collection('bookings');
     await bookings.add({
       'userId': user!.uid,
-      'airline': flight['airline']?['name'] ?? 'Unknown Airline',
-      'flightNumber': flight['flight']?['iata'] ?? 'N/A',
-      'arrival': flight['arrival']?['airport'] ?? 'Unknown',
-      'departure': flight['departure']?['airport'] ?? 'Unknown',
-      'departureTime': flight['departure']?['scheduled'] ?? '',
+      'airline': flight['airline'],
+      'flightNumber': flight['flightNumber'],
+      'arrival': flight['destination'],
+      'departure': flight['departure'],
+      'departureTime': flight['departureTime'],
       'status': 'Booked',
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Flight booked successfully!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Flight booked successfully!')));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         centerTitle: true,
         elevation: 4,
-        shadowColor: Colors.black26,
         title: Text(
-          'FLIGHT SCHEDULES',
+          widget.from != null && widget.to != null
+              ? '${widget.from} → ${widget.to}'
+              : 'FLIGHT SCHEDULES',
           style: GoogleFonts.poppins(
-            textStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error.isNotEmpty
-          ? Center(
-              child: Text(
-                'Error fetching flights:\n$error',
-                style: GoogleFonts.poppins(
-                  textStyle: const TextStyle(color: Colors.redAccent),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            )
+      body: flights.isEmpty
+          ? Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: fetchFlights,
+              onRefresh: () async => generateFlights(),
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 itemCount: flights.length,
                 itemBuilder: (context, index) {
                   final flight = flights[index];
-                  final airline =
-                      flight['airline']?['name'] ?? 'Unknown Airline';
-                  final flightNumber = flight['flight']?['iata'] ?? 'N/A';
-                  final arrival =
-                      flight['arrival']?['airport'] ?? 'Unknown Airport';
-                  final status = flight['flight_status'] ?? 'Scheduled';
-                  final departureTime =
-                      flight['departure']?['scheduled'] ?? 'Unknown';
-
-                  return Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 3,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.flight_takeoff,
-                            color: Colors.blue,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$airline ($flightNumber)',
-                                  style: GoogleFonts.poppins(
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Destination: $arrival\nDeparture: $departureTime\nStatus: ${status.toUpperCase()}',
-                                  style: GoogleFonts.poppins(
-                                    textStyle: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      BookingPage(flight: flight),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.yellow[700],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: Text(
-                              'Book',
-                              style: GoogleFonts.poppins(
-                                textStyle: const TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                  return buildFlightCard(flight);
                 },
               ),
             ),
+    );
+  }
+
+  Widget buildFlightCard(Map<String, dynamic> flight) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Times Row with Airplane in center
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 60,
+                child: Text(
+                  flight['departureTime'],
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              Column(
+                children: [
+                  Icon(
+                    Icons.flight_takeoff,
+                    size: 26,
+                    color: Colors.amber[700],
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    flight['duration'],
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
+                ],
+              ),
+
+              SizedBox(
+                width: 60,
+                child: Text(
+                  flight['arrivalTime'],
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 4),
+
+          // Locations Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 100,
+                child: Text(
+                  "Depart – ${flight['departure']}",
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  softWrap: true,
+                ),
+              ),
+              Container(
+                width: 100,
+                child: Text(
+                  "Arrive – ${flight['destination']}",
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  softWrap: true,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 12),
+          Divider(),
+
+          // Airline & Price
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      flight['airline'],
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      flight['flightNumber'],
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "PHP ${flight['price']}.00",
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1155CC),
+                    ),
+                  ),
+                  Text(
+                    "All-in Fare/guest",
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          SizedBox(height: 14),
+
+          // Select Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookingPage(flight: flight),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 78, 127, 186),
+                padding: EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                "BOOK",
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
