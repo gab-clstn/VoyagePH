@@ -75,8 +75,13 @@ class _FlightsPageState extends State<FlightsPage> {
       'PAL Express',
     ];
 
+    // Use the current date to create a seed
+    final today = DateTime.now();
+    final seed = today.year * 10000 + today.month * 100 + today.day;
+    final dailyRandom = Random(seed); // Daily-seeded random generator
+
     List<Map<String, dynamic>> tempFlights = List.generate(
-      5 + _random.nextInt(5),
+      5 + dailyRandom.nextInt(5),
       (index) {
         String from;
         String to;
@@ -85,28 +90,29 @@ class _FlightsPageState extends State<FlightsPage> {
           from = widget.from!;
           to = widget.to!;
         } else {
-          from = locations[_random.nextInt(locations.length)];
-          to = locations[_random.nextInt(locations.length)];
+          from = locations[dailyRandom.nextInt(locations.length)];
+          to = locations[dailyRandom.nextInt(locations.length)];
           while (to == from) {
-            to = locations[_random.nextInt(locations.length)];
+            to = locations[dailyRandom.nextInt(locations.length)];
           }
         }
 
         // Random departure hour and minute
-        final depHour = 6 + _random.nextInt(12); // 6AM-5PM
-        final depMinute = [0, 15, 30, 45][_random.nextInt(4)];
+        final depHour = 6 + dailyRandom.nextInt(12); // 6AM-5PM
+        final depMinute = [0, 15, 30, 45][dailyRandom.nextInt(4)];
 
         final depDateTime = DateTime(
-          DateTime.now().year,
-          DateTime.now().month,
-          DateTime.now().day,
+          today.year,
+          today.month,
+          today.day,
           depHour,
           depMinute,
         );
 
         // Random duration 1h-5h + 0,15,30,45 min
         final durationMinutes =
-            (1 + _random.nextInt(5)) * 60 + [0, 15, 30, 45][_random.nextInt(4)];
+            (1 + dailyRandom.nextInt(5)) * 60 +
+            [0, 15, 30, 45][dailyRandom.nextInt(4)];
 
         final arrDateTime = depDateTime.add(Duration(minutes: durationMinutes));
 
@@ -125,15 +131,15 @@ class _FlightsPageState extends State<FlightsPage> {
         final durationStr = '${hours}h ${minutes.toString().padLeft(2, '0')}m';
 
         return {
-          'airline': airlines[_random.nextInt(airlines.length)],
-          'flightNumber': 'PH${100 + _random.nextInt(900)}',
+          'airline': airlines[dailyRandom.nextInt(airlines.length)],
+          'flightNumber': 'PH${100 + dailyRandom.nextInt(900)}',
           'departure': from,
           'destination': to,
           'departureTime': departureTimeStr,
           'arrivalTime': arrivalTimeStr,
           'duration': durationStr,
-          'status': _random.nextBool() ? 'Scheduled' : 'Delayed',
-          'price': 10399 + _random.nextInt(4000),
+          'status': dailyRandom.nextBool() ? 'Scheduled' : 'Delayed',
+          'price': 10399 + dailyRandom.nextInt(4000),
         };
       },
     );
