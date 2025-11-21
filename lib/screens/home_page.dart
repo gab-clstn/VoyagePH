@@ -89,6 +89,15 @@ class _HomePageState extends State<HomePage>
 
   late AnimationController _zoomController;
   late Animation<double> _zoomAnimation;
+  String getRandomTime() {
+    final random = DateTime.now().millisecondsSinceEpoch;
+    final minutes = (random % 12) * 5; // 0,5,10,15... up to 55
+    final hour = 6 + (random % 12); // 6AM to 6PM
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = (hour % 12 == 0) ? 12 : hour % 12;
+
+    return '$displayHour:${minutes.toString().padLeft(2, '0')} $period';
+  }
 
   @override
   void initState() {
@@ -317,7 +326,12 @@ class _HomePageState extends State<HomePage>
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow[700],
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            56,
+                            82,
+                            163,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -326,7 +340,7 @@ class _HomePageState extends State<HomePage>
                         child: const Text(
                           "Search Flights",
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -643,8 +657,13 @@ class _HomePageState extends State<HomePage>
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.yellow[700],
-                                        foregroundColor: Colors.black,
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          56,
+                                          82,
+                                          163,
+                                        ),
+                                        foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 26,
                                           vertical: 14,
