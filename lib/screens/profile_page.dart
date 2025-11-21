@@ -136,15 +136,7 @@ class ProfilePage extends StatelessWidget {
             },
           ),
 
-          // My Bookings (placeholder)
-          ListTile(
-            leading: const Icon(Icons.book_online_outlined),
-            title: Text("My Bookings", style: GoogleFonts.poppins()),
-            subtitle: Text("View status and history", style: GoogleFonts.poppins(fontSize: 12)),
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimpleInfoScreen(title: 'My Bookings', content: 'Bookings screen not implemented yet.')));
-            },
-          ),
+         
 
           // Security actions moved under Account / Basic area (not under FAQ & Resources)
           ListTile(
@@ -167,11 +159,7 @@ class ProfilePage extends StatelessWidget {
             title: Text("Philippine Holidays", style: GoogleFonts.poppins()),
             onTap: () => _showHolidays(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.event),
-            title: Text("News and Events", style: GoogleFonts.poppins()),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SimpleInfoScreen(title: 'News & Events', content: 'News and events content.'))),
-          ),
+          
           ListTile(
             leading: const Icon(Icons.headset_mic_outlined),
             title: Text("Contact Us", style: GoogleFonts.poppins()),
@@ -261,20 +249,28 @@ class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final Color primary = const Color.fromARGB(255, 11, 66, 121);
-    return Scaffold(
-      appBar: AppBar(title: Text('About VoyagePH', style: GoogleFonts.poppins()), backgroundColor: primary),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Text(
-            'VoyagePH helps you find and book flights across the Philippines. This is placeholder content — replace with real information.',
-            style: GoogleFonts.poppins(fontSize: 15),
-          ),
+  final Color primary = const Color.fromARGB(255, 11, 66, 121);
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('About VoyagePH', style: GoogleFonts.poppins()),
+      backgroundColor: primary,
+    ),
+    body: Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Text(
+          'VoyagePH is a Flutter-based mobile app designed to help users search, '
+          'book, and manage flights across the Philippines. It provides real-time '
+          'flight information, fare details, and an intuitive booking interface. '
+          'Users can view their bookings, request cancellations, and receive notifications '
+          'all within the app, making flight management simple and convenient.',
+          style: GoogleFonts.poppins(fontSize: 15, height: 1.5),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
 
 // Terms screen (simple)
@@ -374,36 +370,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   bool _loading = false;
   String? _message;
 
-  Future<void> _requestDeletionEmail() async {
-    final user = FirebaseAuth.instance.currentUser;
-    final email = user?.email ?? '';
-    final uid = user?.uid ?? '';
-    final subject = 'Account Deletion Request';
-    final body = 'Please delete my VoyagePH account.\n\nEmail: $email\nUID: $uid\n\nI confirm that I want to delete this account. Please proceed with deletion and confirm when done.\n\nThank you.';
-
-    final gmailUrl =
-        'https://mail.google.com/mail/?view=cm&fs=1&to=${Uri.encodeComponent('support@voyageph.example')}&su=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}';
-    final gmailUri = Uri.parse(gmailUrl);
-    if (await canLaunchUrl(gmailUri)) {
-      await launchUrl(gmailUri, mode: LaunchMode.externalApplication);
-      if (mounted) setState(() => _message = 'Opened Gmail compose. Send the request to support.');
-      return;
-    }
-
-    final mailto = Uri(
-      scheme: 'mailto',
-      path: 'support@voyageph.example',
-      queryParameters: {'subject': subject, 'body': body},
-    );
-    if (await canLaunchUrl(mailto)) {
-      await launchUrl(mailto, mode: LaunchMode.externalApplication);
-      if (mounted) setState(() => _message = 'Opened mail app. Send the request to support.');
-      return;
-    }
-
-    if (mounted) setState(() => _message = 'Could not open a mail client. Please email support@voyageph.example manually.');
-  }
-
+  
   Future<void> _deleteNow() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.email == null) {
@@ -446,8 +413,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Request account deletion via email (recommended) or delete now (requires re-entering password).', style: GoogleFonts.poppins()),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: _requestDeletionEmail, style: ElevatedButton.styleFrom(backgroundColor: primary), child: Text('Request Deletion via Email', style: GoogleFonts.poppins())),
-          const SizedBox(height: 20),
+         
           Text('Delete now (requires password)', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           TextField(controller: _pwCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder())),

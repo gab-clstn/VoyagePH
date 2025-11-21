@@ -33,10 +33,14 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
     setState(() => _loading = true);
 
     try {
+      // Create Firebase Auth account
       final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _email, password: _password);
+        email: _email,
+        password: _password,
+      );
 
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+      // Save admin info in 'admin' collection
+      await FirebaseFirestore.instance.collection('admin').doc(userCredential.user!.uid).set({
         'firstName': _firstName,
         'lastName': _lastName,
         'email': _email,
@@ -61,7 +65,10 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFF4B7B9A);
     return Scaffold(
-      appBar: AppBar(title: Text('Add Admin', style: GoogleFonts.poppins()), backgroundColor: primary),
+      appBar: AppBar(
+        title: Text('Add Admin', style: GoogleFonts.poppins()),
+        backgroundColor: primary,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(

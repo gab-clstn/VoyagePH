@@ -4,15 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '/auth/login_screen.dart'; // <-- add this import
 
 import 'admin_dashboard.dart';
-
 import 'booking_requests_screen.dart';
 import 'cancelled_requests_screen.dart';
 import 'flight_management.dart';
-import 'user_management.dart';
 import 'change_password_screen.dart';
 import 'change_email_screen.dart';
 import 'change_name_screen.dart';
 import 'add_admin_screen.dart';
+import 'booking_history_screen.dart'; // <-- import your history screen
 
 class AdminDrawer extends StatelessWidget {
   const AdminDrawer({super.key});
@@ -76,12 +75,12 @@ class AdminDrawer extends StatelessWidget {
               ),
             ),
 
-            // Users
+            // History
             ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: Text('Users', style: GoogleFonts.poppins()),
+              leading: const Icon(Icons.history),
+              title: Text('History', style: GoogleFonts.poppins()),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+                MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
               ),
             ),
 
@@ -139,13 +138,12 @@ class AdminDrawer extends StatelessWidget {
                 // Navigate to Login screen and remove all previous routes
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()), 
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
                     (route) => false,
                   );
                 }
               },
             ),
-
 
             // Close Drawer
             ListTile(

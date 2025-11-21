@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
+import 'services/auth_services.dart';
 import 'auth/auth_landing.dart';
 import 'screens/home_screen.dart';
 
@@ -21,8 +22,14 @@ class VoyagePHApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider<FirebaseAuth>(
-      create: (_) => FirebaseAuth.instance,
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService()),
+        StreamProvider<User?>(
+          create: (context) => context.read<AuthService>().userChanges,
+          initialData: null,
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'VoyagePH',
@@ -48,29 +55,12 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<FirebaseAuth>(context, listen: false);
-    return StreamBuilder<User?>(
-      stream: auth.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen();
-        }
-        final user = snapshot.data;
-        if (user == null) {
-          return const AuthLanding();
-        } else {
-          return HomeScreen(user: user);
-        }
-      },
-    );
-  }
-}
+    final user = context.watch<User?>();
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (user == null) {
+      return const AuthLanding();
+    } else {
+      return HomeScreen(user: user);
+    }
   }
 }

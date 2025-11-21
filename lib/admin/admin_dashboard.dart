@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'admin_drawer.dart';
 import 'booking_requests_screen.dart';
-import 'cancelled_requests_screen.dart'; // <-- new screen
+import 'cancelled_requests_screen.dart';
 import 'flight_management.dart';
+import 'admin_booking_history_tab.dart'; // <-- import the history screen
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -41,7 +42,7 @@ class AdminDashboard extends StatelessWidget {
                   _tile(
                     context,
                     Icons.cancel_outlined,
-                    'Cancelled Bookings', // <-- new tile
+                    'Cancelled Bookings',
                     () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const CancelledRequestsScreen()),
                     ),
@@ -56,16 +57,11 @@ class AdminDashboard extends StatelessWidget {
                   ),
                   _tile(
                     context,
-                    Icons.people_outline,
-                    'Users',
-                    () => Navigator.of(context).pushNamed('/admin/users'),
-                  ),
-                  _tile(
-                    context,
-                    Icons.bar_chart,
-                    'Analytics',
-                    () => ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('Analytics placeholder'))),
+                    Icons.history,
+                    'Booking History', // <-- new tile
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BookingHistoryTab()),
+                    ),
                   ),
                 ],
               ),
