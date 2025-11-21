@@ -72,12 +72,20 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
+        onDestinationSelected: (index) {
+          if (index == 2) return; // <-- Prevent clicking Booking
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
           NavigationDestination(
-            icon: Icon(Icons.book_online),
+            icon: Icon(
+              Icons.book_online,
+              color: Colors.grey,
+            ), // visually disabled
             label: 'Booking',
           ),
           NavigationDestination(

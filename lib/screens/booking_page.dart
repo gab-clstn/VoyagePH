@@ -21,8 +21,8 @@ class _BookingPageState extends State<BookingPage> {
   String _seatClass = 'Economy';
   String? _seatNumber;
   bool _loading = false;
-  final double _baseFare = 5000;
-  double _computedFare = 5000;
+  double _baseFare = 2000;
+  double _computedFare = 2000;
 
   final Map<String, List<String>> _seatMap = {
     'Economy': ['12A', '12B', '13A', '13B', '14A', '14B', '15A', '15B'],
@@ -41,6 +41,7 @@ class _BookingPageState extends State<BookingPage> {
   @override
   void initState() {
     super.initState();
+    _baseFare = widget.flight?['price']?.toDouble() ?? 2000;
     _initializePassengerControllers();
     _fetchAvailableSeats();
     _updateFare();
@@ -92,9 +93,11 @@ class _BookingPageState extends State<BookingPage> {
         multiplier = 2.0;
         break;
     }
+
+    double fare = _baseFare * multiplier * _numPassengers;
+
     setState(() {
-      _computedFare =
-          _baseFare * multiplier * _numPassengers; // multiply by passengers
+      _computedFare = fare < 2000 ? 2000 : fare;
     });
   }
 

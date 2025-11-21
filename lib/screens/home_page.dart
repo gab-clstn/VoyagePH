@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'booking_page.dart';
 import 'flights_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -89,6 +88,7 @@ class _HomePageState extends State<HomePage>
 
   late AnimationController _zoomController;
   late Animation<double> _zoomAnimation;
+
   String getRandomTime() {
     final random = DateTime.now().millisecondsSinceEpoch;
     final minutes = (random % 12) * 5; // 0,5,10,15... up to 55
@@ -251,9 +251,8 @@ class _HomePageState extends State<HomePage>
                           if (toLocation == val) toLocation = null;
                         });
                       },
-                      isError: fromError, // HIGHLIGHT ERROR
+                      isError: fromError,
                     ),
-
                     _customDropdownField(
                       label: 'To',
                       selected: toLocation,
@@ -267,9 +266,8 @@ class _HomePageState extends State<HomePage>
                           if (fromLocation == val) fromLocation = null;
                         });
                       },
-                      isError: toError, // HIGHLIGHT ERROR
+                      isError: toError,
                     ),
-
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -278,28 +276,27 @@ class _HomePageState extends State<HomePage>
                             'Departure',
                             departureDate,
                             () => _selectDate(context, true),
-                            isError: departureError, // highlights red if empty
+                            isError: departureError,
                           ),
                         ),
-
                         const SizedBox(width: 10),
                         Expanded(
                           child: _dateField(
                             'Return',
                             returnDate,
-                            () => _selectDate(context, false),
+                            tripType == 'One Way' || tripType == 'Multi-City'
+                                ? null
+                                : () => _selectDate(context, false),
                             isError: returnError && tripType == 'Round Trip',
                           ),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Validate all required fields
                           setState(() {
                             fromError = fromLocation == null;
                             toError = toLocation == null;
@@ -308,7 +305,6 @@ class _HomePageState extends State<HomePage>
                                 tripType == 'Round Trip' && returnDate == null;
                           });
 
-                          // Only navigate if all required fields are filled
                           if (!fromError &&
                               !toError &&
                               !departureError &&
@@ -390,7 +386,7 @@ class _HomePageState extends State<HomePage>
     required String? selected,
     required List<String> options,
     required ValueChanged<String?> onChanged,
-    bool isError = false, // NEW
+    bool isError = false,
   }) {
     return GestureDetector(
       onTap: () async {
@@ -490,7 +486,7 @@ class _HomePageState extends State<HomePage>
   Widget _dateField(
     String label,
     DateTime? date,
-    VoidCallback onTap, {
+    VoidCallback? onTap, {
     bool isError = false,
   }) {
     return GestureDetector(
@@ -500,16 +496,22 @@ class _HomePageState extends State<HomePage>
         decoration: BoxDecoration(
           border: Border.all(color: isError ? Colors.red : Colors.grey),
           borderRadius: BorderRadius.circular(10),
-          color: Colors.grey[100],
+          color: onTap == null ? Colors.grey[300] : Colors.grey[100],
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today, size: 18, color: Colors.grey[700]),
+            Icon(
+              Icons.calendar_today,
+              size: 18,
+              color: onTap == null ? Colors.grey[500] : Colors.grey[700],
+            ),
             const SizedBox(width: 8),
             Text(
               date != null ? DateFormat('MMM dd, yyyy').format(date) : label,
               style: TextStyle(
-                color: date != null ? Colors.black : Colors.grey[700],
+                color: onTap == null
+                    ? Colors.grey[500]
+                    : (date != null ? Colors.black : Colors.grey[700]),
               ),
             ),
           ],
@@ -533,12 +535,9 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildDestinationGrid() {
     final discover = heroImages;
-
-    // Track button visibility for each item
     List<bool> showButton = List.generate(discover.length, (_) => false);
     final Random _random = Random();
 
-    // If you haven't added 'hasFlight' to heroImages yet, generate it randomly
     for (var place in discover) {
       if (!place.containsKey('hasFlight')) {
         place['hasFlight'] = _random.nextBool();
@@ -568,7 +567,6 @@ class _HomePageState extends State<HomePage>
               final image = place["image"]!;
               final hasFlight = place["hasFlight"] as bool;
 
-              // Dynamic height
               double height;
               if (columns == 2) {
                 height = (index % 2 == 0) ? 240 : 160;
@@ -591,14 +589,11 @@ class _HomePageState extends State<HomePage>
                         borderRadius: BorderRadius.circular(16),
                         child: Stack(
                           children: [
-                            // IMAGE
                             Container(
                               height: height,
                               width: double.infinity,
                               child: Image.asset(image, fit: BoxFit.cover),
                             ),
-
-                            // DARK OVERLAY WHEN BUTTON SHOWS
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               height: height,
@@ -607,8 +602,6 @@ class _HomePageState extends State<HomePage>
                                   ? Colors.black.withOpacity(0.35)
                                   : Colors.transparent,
                             ),
-
-                            // PLACE NAME
                             Positioned(
                               bottom: 12,
                               left: 12,
@@ -624,9 +617,6 @@ class _HomePageState extends State<HomePage>
                                 ),
                               ),
                             ),
-
-                            // BOOK BUTTON IF AVAILABLE
-                            // Inside Stack of each card
                             if (showButton[index] && hasFlight)
                               Positioned.fill(
                                 child: Center(
@@ -635,23 +625,17 @@ class _HomePageState extends State<HomePage>
                                     opacity: showButton[index] ? 1.0 : 0.0,
                                     child: ElevatedButton(
                                       onPressed: () {
-                                        // Navigate to BookingPage with the flight/place info
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => BookingPage(
-                                              flight: {
-                                                'name': name,
-                                                'id':
-                                                    'flight_${index}', // you can generate a unique id
-                                                'departure':
-                                                    'Manila', // placeholder, or get real data
-                                                'destination': name,
-                                                'departureTime':
-                                                    '08:00 AM', // placeholder
-                                                'arrivalTime':
-                                                    '10:00 AM', // placeholder
-                                              },
+                                            builder: (_) => FlightsPage(
+                                              from:
+                                                  fromLocation ??
+                                                  'Manila', // use selected or default
+                                              to: name, // the clicked place
+                                              departureDate:
+                                                  departureDate ??
+                                                  DateTime.now(),
                                             ),
                                           ),
                                         );
@@ -686,7 +670,6 @@ class _HomePageState extends State<HomePage>
                                 ),
                               ),
 
-                            // NO FLIGHTS AVAILABLE IF NOT
                             if (showButton[index] && !hasFlight)
                               Positioned.fill(
                                 child: Center(
