@@ -4,28 +4,37 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'booking_page.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class FlightsPage extends StatefulWidget {
   final String? from;
   final String? to;
   final DateTime? departureDate;
+  final DateTime? returnDate;
 
   const FlightsPage({
     super.key,
     this.from,
     this.to,
     this.departureDate,
-    DateTime? returnDate,
+    this.returnDate,
   });
 
   @override
   State<FlightsPage> createState() => _FlightsPageState();
 }
 
-class _FlightsPageState extends State<FlightsPage> {
-  List<Map<String, dynamic>> flights = [];
+class _FlightsPageState extends State<FlightsPage>
+    with TickerProviderStateMixin {
+  List<Map<String, dynamic>> outboundFlights = [];
+  List<Map<String, dynamic>> returnFlights = [];
+  Map<String, dynamic>? selectedOutbound;
+  Map<String, dynamic>? selectedReturn;
+
   final user = FirebaseAuth.instance.currentUser;
   final Random _random = Random();
+
+  bool _inReturnSelectionMode = false;
 
   final List<String> locations = [
     'Bacolod',
@@ -70,10 +79,15 @@ class _FlightsPageState extends State<FlightsPage> {
   @override
   void initState() {
     super.initState();
-    generateFlights();
+    _generateOutboundFlights();
+    if (widget.returnDate != null) _generateReturnFlights();
   }
 
-  void generateFlights() {
+  void _generateOutboundFlights() {
+    final seedDate = widget.departureDate ?? DateTime.now();
+    final seed = seedDate.year * 10000 + seedDate.month * 100 + seedDate.day;
+    final dailyRandom = Random(seed);
+
     final airlines = [
       'Philippine Airlines',
       'Cebu Pacific',
@@ -81,149 +95,344 @@ class _FlightsPageState extends State<FlightsPage> {
       'PAL Express',
     ];
 
-    // Use the current date to create a seed
-    final today = DateTime.now();
-    final seed = today.year * 10000 + today.month * 100 + today.day;
-    final dailyRandom = Random(seed); // Daily-seeded random generator
+    List<Map<String, dynamic>>
+    temp = List.generate(5 + dailyRandom.nextInt(5), (index) {
+      String from =
+          widget.from ?? locations[dailyRandom.nextInt(locations.length)];
+      String to = widget.to ?? locations[dailyRandom.nextInt(locations.length)];
+      while (to == from) {
+        to = locations[dailyRandom.nextInt(locations.length)];
+      }
 
-    List<Map<String, dynamic>> tempFlights = List.generate(
-      5 + dailyRandom.nextInt(5),
-      (index) {
-        String from;
-        String to;
+      final depHour = 6 + dailyRandom.nextInt(12);
+      final depMinute = [0, 15, 30, 45][dailyRandom.nextInt(4)];
 
-        if (widget.from != null && widget.to != null) {
-          from = widget.from!;
-          to = widget.to!;
-        } else {
-          from = locations[dailyRandom.nextInt(locations.length)];
-          to = locations[dailyRandom.nextInt(locations.length)];
-          while (to == from) {
-            to = locations[dailyRandom.nextInt(locations.length)];
-          }
-        }
+      final depDateTime = DateTime(
+        seedDate.year,
+        seedDate.month,
+        seedDate.day,
+        depHour,
+        depMinute,
+      );
 
-        // Random departure hour and minute
-        final depHour = 6 + dailyRandom.nextInt(12); // 6AM-5PM
-        final depMinute = [0, 15, 30, 45][dailyRandom.nextInt(4)];
+      final durationMinutes =
+          (1 + dailyRandom.nextInt(5)) * 60 +
+          [0, 15, 30, 45][dailyRandom.nextInt(4)];
 
-        final depDateTime = DateTime(
-          today.year,
-          today.month,
-          today.day,
-          depHour,
-          depMinute,
-        );
+      final arrDateTime = depDateTime.add(Duration(minutes: durationMinutes));
 
-        // Random duration 1h-5h + 0,15,30,45 min
-        final durationMinutes =
-            (1 + dailyRandom.nextInt(5)) * 60 +
-            [0, 15, 30, 45][dailyRandom.nextInt(4)];
+      String formatTime(DateTime dt) {
+        final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+        final minute = dt.minute.toString().padLeft(2, '0');
+        final period = dt.hour >= 12 ? 'PM' : 'AM';
+        return '$hour:$minute $period';
+      }
 
-        final arrDateTime = depDateTime.add(Duration(minutes: durationMinutes));
-
-        String formatTime(DateTime dt) {
-          final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-          final minute = dt.minute.toString().padLeft(2, '0');
-          final period = dt.hour >= 12 ? 'PM' : 'AM';
-          return '$hour:$minute $period';
-        }
-
-        final departureTimeStr = formatTime(depDateTime);
-        final arrivalTimeStr = formatTime(arrDateTime);
-
-        final hours = durationMinutes ~/ 60;
-        final minutes = durationMinutes % 60;
-        final durationStr = '${hours}h ${minutes.toString().padLeft(2, '0')}m';
-
-        return {
-          'airline': airlines[dailyRandom.nextInt(airlines.length)],
-          'flightNumber': 'PH${100 + dailyRandom.nextInt(900)}',
-          'departure': from,
-          'destination': to,
-          'departureTime': departureTimeStr,
-          'arrivalTime': arrivalTimeStr,
-          'duration': durationStr,
-          'status': dailyRandom.nextBool() ? 'Scheduled' : 'Delayed',
-          'price': 10399 + dailyRandom.nextInt(4000),
-        };
-      },
-    );
-
-    setState(() {
-      flights = tempFlights;
+      return {
+        'airline': airlines[dailyRandom.nextInt(airlines.length)],
+        'flightNumber': 'PH${100 + dailyRandom.nextInt(900)}',
+        'departure': from,
+        'destination': to,
+        'departureTime': formatTime(depDateTime),
+        'arrivalTime': formatTime(arrDateTime),
+        'duration':
+            '${durationMinutes ~/ 60}h ${(durationMinutes % 60).toString().padLeft(2, '0')}m',
+        'status': dailyRandom.nextBool() ? 'Scheduled' : 'Delayed',
+        'price': 8000 + dailyRandom.nextInt(5000),
+      };
     });
+
+    setState(() => outboundFlights = temp);
   }
 
-  Future<void> bookFlight(Map<String, dynamic> flight) async {
-    if (user == null) return;
+  void _generateReturnFlights() {
+    final seedDate =
+        widget.returnDate ??
+        (widget.departureDate?.add(const Duration(days: 1)) ??
+            DateTime.now().add(const Duration(days: 1)));
 
-    final bookings = FirebaseFirestore.instance.collection('bookings');
-    await bookings.add({
-      'userId': user!.uid,
-      'airline': flight['airline'],
-      'flightNumber': flight['flightNumber'],
-      'arrival': flight['destination'],
-      'departure': flight['departure'],
-      'departureTime': flight['departureTime'],
-      'status': 'Booked',
-      'timestamp': FieldValue.serverTimestamp(),
+    final seed = seedDate.year * 10000 + seedDate.month * 100 + seedDate.day;
+    final dailyRandom = Random(seed + 7);
+
+    final airlines = [
+      'Philippine Airlines',
+      'Cebu Pacific',
+      'AirAsia',
+      'PAL Express',
+    ];
+
+    List<Map<String, dynamic>>
+    temp = List.generate(5 + dailyRandom.nextInt(5), (index) {
+      String from =
+          widget.to ?? locations[dailyRandom.nextInt(locations.length)];
+      String to =
+          widget.from ?? locations[dailyRandom.nextInt(locations.length)];
+      while (to == from) {
+        to = locations[dailyRandom.nextInt(locations.length)];
+      }
+
+      final depHour = 6 + dailyRandom.nextInt(12);
+      final depMinute = [0, 15, 30, 45][dailyRandom.nextInt(4)];
+
+      final depDateTime = DateTime(
+        seedDate.year,
+        seedDate.month,
+        seedDate.day,
+        depHour,
+        depMinute,
+      );
+
+      final durationMinutes =
+          (1 + dailyRandom.nextInt(5)) * 60 +
+          [0, 15, 30, 45][dailyRandom.nextInt(4)];
+
+      final arrDateTime = depDateTime.add(Duration(minutes: durationMinutes));
+
+      String formatTime(DateTime dt) {
+        final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+        final minute = dt.minute.toString().padLeft(2, '0');
+        final period = dt.hour >= 12 ? 'PM' : 'AM';
+        return '$hour:$minute $period';
+      }
+
+      return {
+        'airline': airlines[dailyRandom.nextInt(airlines.length)],
+        'flightNumber': 'PH${100 + dailyRandom.nextInt(900)}',
+        'departure': from,
+        'destination': to,
+        'departureTime': formatTime(depDateTime),
+        'arrivalTime': formatTime(arrDateTime),
+        'duration':
+            '${durationMinutes ~/ 60}h ${(durationMinutes % 60).toString().padLeft(2, '0')}m',
+        'status': dailyRandom.nextBool() ? 'Scheduled' : 'Delayed',
+        'price': 8000 + dailyRandom.nextInt(5000),
+      };
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Flight booked successfully!')));
+    setState(() => returnFlights = temp);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 11, 66, 121),
-        centerTitle: true,
-        elevation: 4,
-        title: Text(
-          widget.from != null && widget.to != null
-              ? '${widget.from} → ${widget.to}'
-              : 'FLIGHT SCHEDULES',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      body: flights.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () async => generateFlights(),
-              child: ListView.builder(
-                padding: EdgeInsets.all(16),
-                itemCount: flights.length,
-                itemBuilder: (context, index) {
-                  final flight = flights[index];
-                  return buildFlightCard(flight);
-                },
+    final hasReturn = widget.returnDate != null;
+    final dateFormat = DateFormat('MMM dd, yyyy');
+
+    return WillPopScope(
+      onWillPop: () async => !_inReturnSelectionMode,
+      child: DefaultTabController(
+        length: hasReturn ? 2 : 1,
+        child: Scaffold(
+          backgroundColor: Colors.grey[100],
+          appBar: AppBar(
+            backgroundColor: const Color.fromARGB(255, 11, 66, 121),
+            centerTitle: true,
+            elevation: 4,
+            leading: _inReturnSelectionMode ? const SizedBox.shrink() : null,
+            title: Text(
+              widget.from != null && widget.to != null
+                  ? '${widget.from} → ${widget.to}'
+                  : 'FLIGHT SCHEDULES',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
               ),
             ),
+            bottom: hasReturn
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(60),
+                    child: Container(
+                      color: const Color.fromARGB(255, 11, 66, 121),
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TabBar(
+                        labelColor: Colors.black, // text color selected
+                        unselectedLabelColor:
+                            Colors.white, // text color not selected
+                        dividerColor: Colors.transparent,
+
+                        indicator: BoxDecoration(
+                          color: const Color.fromARGB(
+                            255,
+                            181,
+                            228,
+                            235,
+                          ), // light blue
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+
+                        indicatorSize: TabBarIndicatorSize.tab,
+
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
+                        ),
+
+                        labelPadding: const EdgeInsets.symmetric(vertical: 4),
+
+                        tabs: [
+                          SizedBox(
+                            height: 40, // IMPORTANT = fixes layout
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Outbound',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                if (widget.departureDate != null)
+                                  Text(
+                                    dateFormat.format(widget.departureDate!),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 40,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Return',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                if (widget.returnDate != null)
+                                  Text(
+                                    dateFormat.format(widget.returnDate!),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          body: hasReturn ? _buildRoundTripBody() : _buildOneWayBody(),
+        ),
+      ),
     );
   }
 
-  Widget buildFlightCard(Map<String, dynamic> flight) {
+  Widget _buildOneWayBody() {
+    return RefreshIndicator(
+      onRefresh: () async => _generateOutboundFlights(),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: outboundFlights.length,
+        itemBuilder: (context, index) {
+          final flight = outboundFlights[index];
+          return _flightCard(
+            flight,
+            isReturnCard: false,
+            onSelect: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BookingPage(
+                    flight: flight,
+                    travelDate: widget.departureDate ?? DateTime.now(),
+                    returnDate: null,
+                    returnFlight: null,
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRoundTripBody() {
+    return TabBarView(
+      children: [
+        RefreshIndicator(
+          onRefresh: () async => _generateOutboundFlights(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: outboundFlights.length,
+            itemBuilder: (context, index) {
+              final flight = outboundFlights[index];
+              final isSelected =
+                  selectedOutbound != null &&
+                  selectedOutbound!['flightNumber'] == flight['flightNumber'];
+
+              return _flightCard(
+                flight,
+                isReturnCard: false,
+                selectedFlag: isSelected,
+                onSelect: () {
+                  setState(() {
+                    selectedOutbound = flight;
+                    _inReturnSelectionMode = true;
+                  });
+
+                  _generateReturnFlights();
+
+                  final tabController = DefaultTabController.of(context);
+                  if (tabController != null && tabController.length > 1) {
+                    tabController.animateTo(1);
+                  }
+                },
+              );
+            },
+          ),
+        ),
+
+        RefreshIndicator(
+          onRefresh: () async => _generateReturnFlights(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: returnFlights.length,
+            itemBuilder: (context, index) {
+              final flight = returnFlights[index];
+              final isSelected =
+                  selectedReturn != null &&
+                  selectedReturn!['flightNumber'] == flight['flightNumber'];
+
+              return Column(
+                children: [
+                  _flightCard(
+                    flight,
+                    isReturnCard: true,
+                    selectedFlag: isSelected,
+                    onSelect: () {
+                      setState(() {
+                        selectedReturn = flight;
+                      });
+                    },
+                  ),
+                  if (index == returnFlights.length - 1)
+                    const SizedBox(height: 96),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _flightCard(
+    Map<String, dynamic> flight, {
+    required bool isReturnCard,
+    bool selectedFlag = false,
+    required VoidCallback onSelect,
+  }) {
     return Container(
-      margin: EdgeInsets.only(bottom: 14),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: selectedFlag ? Colors.blue.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
         ],
       ),
       child: Column(
         children: [
-          // Times Row with Airplane in center
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -238,7 +447,6 @@ class _FlightsPageState extends State<FlightsPage> {
                   ),
                 ),
               ),
-
               Column(
                 children: [
                   Icon(
@@ -246,14 +454,13 @@ class _FlightsPageState extends State<FlightsPage> {
                     size: 26,
                     color: Colors.amber[700],
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     flight['duration'],
                     style: GoogleFonts.poppins(fontSize: 12),
                   ),
                 ],
               ),
-
               SizedBox(
                 width: 60,
                 child: Text(
@@ -268,36 +475,32 @@ class _FlightsPageState extends State<FlightsPage> {
             ],
           ),
 
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
 
-          // Locations Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
+              SizedBox(
                 width: 100,
                 child: Text(
                   "Depart – ${flight['departure']}",
                   style: GoogleFonts.poppins(fontSize: 13),
-                  softWrap: true,
                 ),
               ),
-              Container(
+              SizedBox(
                 width: 100,
                 child: Text(
                   "Arrive – ${flight['destination']}",
                   style: GoogleFonts.poppins(fontSize: 13),
-                  softWrap: true,
                   textAlign: TextAlign.right,
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: 12),
-          Divider(),
+          const SizedBox(height: 12),
+          const Divider(),
 
-          // Airline & Price
           Row(
             children: [
               Expanded(
@@ -321,7 +524,6 @@ class _FlightsPageState extends State<FlightsPage> {
                   ],
                 ),
               ),
-
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -330,7 +532,7 @@ class _FlightsPageState extends State<FlightsPage> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1155CC),
+                      color: const Color(0xFF1155CC),
                     ),
                   ),
                   Text(
@@ -345,37 +547,71 @@ class _FlightsPageState extends State<FlightsPage> {
             ],
           ),
 
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
 
-          // Select Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BookingPage(flight: flight),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 78, 127, 186),
-                padding: EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          ElevatedButton(
+            onPressed: onSelect,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: selectedFlag
+                  ? Colors.green
+                  : const Color.fromARGB(255, 78, 127, 186),
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                "BOOK",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            child: Text(
+              selectedFlag
+                  ? (isReturnCard ? "Selected (Return)" : "Selected (Outbound)")
+                  : (isReturnCard ? "Select Return" : "Select Outbound"),
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
+
+          if (isReturnCard &&
+              selectedReturn != null &&
+              selectedReturn!['flightNumber'] == flight['flightNumber'])
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BookingPage(
+                        flight: selectedOutbound ?? outboundFlights.first,
+                        travelDate: widget.departureDate ?? DateTime.now(),
+                        returnDate: widget.returnDate,
+                        returnFlight: selectedReturn,
+                      ),
+                    ),
+                  ).then((_) {
+                    setState(() => _inReturnSelectionMode = false);
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 56, 82, 163),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 24,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  "Proceed to Booking",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

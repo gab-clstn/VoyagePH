@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasBooking = false;
 
   final List<Widget> _pages = [
-    HomePage(),
+    const HomePage(),
     const FlightsPage(),
     const MyBookingsPage(),
     const ProfilePage(),
@@ -75,7 +75,10 @@ class _HomeScreenState extends State<HomeScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
-          NavigationDestination(icon: Icon(Icons.bookmarks), label: 'My Bookings'),
+          NavigationDestination(
+            icon: Icon(Icons.bookmarks),
+            label: 'My Bookings',
+          ),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
