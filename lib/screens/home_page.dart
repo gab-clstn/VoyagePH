@@ -89,16 +89,6 @@ class _HomePageState extends State<HomePage>
   late AnimationController _zoomController;
   late Animation<double> _zoomAnimation;
 
-  String getRandomTime() {
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final minutes = (random % 12) * 5; // 0,5,10,15... up to 55
-    final hour = 6 + (random % 12); // 6AM to 6PM
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = (hour % 12 == 0) ? 12 : hour % 12;
-
-    return '$displayHour:${minutes.toString().padLeft(2, '0')} $period';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -318,6 +308,9 @@ class _HomePageState extends State<HomePage>
                                   from: fromLocation!,
                                   to: toLocation!,
                                   departureDate: departureDate!,
+                                  returnDate: tripType == 'Round Trip'
+                                      ? returnDate
+                                      : null,
                                 ),
                               ),
                             );
@@ -631,13 +624,15 @@ class _HomePageState extends State<HomePage>
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => FlightsPage(
-                                              from:
-                                                  fromLocation ??
-                                                  'Manila', // use selected or default
-                                              to: name, // the clicked place
+                                              from: fromLocation ?? 'Manila',
+                                              to: name,
                                               departureDate:
                                                   departureDate ??
                                                   DateTime.now(),
+                                              returnDate:
+                                                  tripType == 'Round Trip'
+                                                  ? returnDate
+                                                  : null,
                                             ),
                                           ),
                                         );

@@ -1,19 +1,24 @@
 // booking_page.dart
-// NOTE: Uploaded image (used in conversation) is available at this local path:
-// '/mnt/data/eb35fd4f-022d-42e7-885a-15eb61c77374.png'
-// (developer: that path is provided as the file URL per instructions)
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'home_screen.dart';
 
 class BookingPage extends StatefulWidget {
-  final Map<String, dynamic>? flight;
+  final Map<String, dynamic>? flight; // outbound flight
   final DateTime? travelDate;
   final DateTime? returnDate;
+  final Map<String, dynamic>?
+  returnFlight; // optional return flight (round trip)
 
-  const BookingPage({super.key, this.flight, this.travelDate, this.returnDate});
+  const BookingPage({
+    super.key,
+    this.flight,
+    this.travelDate,
+    this.returnDate,
+    this.returnFlight,
+  });
 
   @override
   State<BookingPage> createState() => _BookingPageState();
@@ -59,26 +64,21 @@ class _BookingPageState extends State<BookingPage> {
     'First Class': ['1A', '1B', '2A', '2B'],
   };
 
-  List<String> _availableSeats =
-      []; // seats not booked in Firestore for current class
-  List<String> _bookedSeats = []; // fetched from Firestore
+  List<String> _availableSeats = [];
+  List<String> _bookedSeats = [];
 
-  // dynamic passenger form controllers & data (size = totalPassengers)
   List<TextEditingController> _nameControllers = [];
   List<TextEditingController> _contactControllers = [];
   List<TextEditingController> _emailControllers = [];
-  List<String> _ageGroups =
-      []; // 'Adult'/'Child (2-12)'/'Infant (0-2)' (derived)
-  List<String> _infantSeating =
-      []; // 'On Seat'/'On Lap' (only meaningful for infants)
-  List<String?> _seatNumbers = []; // chosen seat per passenger, null if none
+  List<String> _ageGroups = [];
+  List<String> _infantSeating = [];
+  List<String?> _seatNumbers = [];
 
   int get _totalPassengers => _adults + _children + _infants;
 
   @override
   void initState() {
     super.initState();
-    // If a search provided a date, lock it by pre-filling widget.travelDate
     _travelDate = widget.travelDate;
     _returnDate = widget.returnDate;
     _baseFare = widget.flight?['price']?.toDouble() ?? 2000;
@@ -88,7 +88,6 @@ class _BookingPageState extends State<BookingPage> {
     _updateFare();
   }
 
-  // rebuild controllers/lists to match total passengers; preserve existing values when possible
   void _rebuildPassengerLists({bool preserveValues = true}) {
     final oldNames = List<TextEditingController>.from(_nameControllers);
     final oldContacts = List<TextEditingController>.from(_contactControllers);
@@ -113,10 +112,8 @@ class _BookingPageState extends State<BookingPage> {
       return TextEditingController();
     });
 
-    // Age groups are derived from counts: first _adults adults, next _children children, then infants
     _ageGroups = List.generate(newCount, (i) => _roleForIndex(i));
 
-    // infant seating default: On Lap for infants, On Seat for others
     _infantSeating = List.generate(newCount, (i) {
       if (preserveValues && i < oldInfantSeating.length)
         return oldInfantSeating[i];
@@ -182,7 +179,6 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _fetchAvailableSeats() async {
-    // Fetch booked seats for the flight from Firestore
     final bookedSeatsQuery = await FirebaseFirestore.instance
         .collection('bookings')
         .where('flightId', isEqualTo: widget.flight?['id'])
@@ -192,7 +188,6 @@ class _BookingPageState extends State<BookingPage> {
         .map((doc) => (doc.data()['seatNumber'] ?? '') as String)
         .toList();
 
-    // Normalize booked seats (handle comma-separated seat lists)
     final normalizedBooked = <String>[];
     for (var bs in bookedSeats) {
       if (bs.trim().isEmpty) continue;
@@ -211,12 +206,10 @@ class _BookingPageState extends State<BookingPage> {
     setState(() {
       _bookedSeats = normalizedBooked;
       _availableSeats = available;
-      // when seat class changes, clear previously chosen seats (they might not exist in new class)
       _seatNumbers = List<String?>.generate(_totalPassengers, (_) => null);
     });
   }
 
-  // ---------------- Seat Picker Modal (per-passenger, Option A) ----------------
   Future<String?> _openSeatPickerModal(BuildContext context, int passengerIdx) {
     final seatList = _seatMap[_seatClass] ?? [];
 
@@ -233,26 +226,61 @@ class _BookingPageState extends State<BookingPage> {
               shrinkWrap: true,
               itemCount: seatList.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3, // bigger boxes for mobile
+                crossAxisCount: 3,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 childAspectRatio: 2.2,
               ),
               itemBuilder: (context, i) {
                 final seat = seatList[i];
-
-                // Consider taken if booked in Firestore OR chosen by other passengers (not this one)
                 final takenByBooked = _bookedSeats.contains(seat);
                 final takenByOther = _seatNumbers.asMap().entries.any(
                   (e) => e.key != passengerIdx && e.value == seat,
                 );
-
                 final isTaken = takenByBooked || takenByOther;
                 final isSelected = _seatNumbers[passengerIdx] == seat;
 
-                return _seatBox(seat, isSelected, isTaken, () {
-                  Navigator.of(context).pop(seat);
-                });
+                return GestureDetector(
+                  onTap: isTaken ? null : () => Navigator.of(context).pop(seat),
+                  child: Container(
+                    width: 70,
+                    height: 48,
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isTaken
+                            ? Colors.red.shade400
+                            : (isSelected
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade400),
+                        width: isSelected ? 2.4 : 1.2,
+                      ),
+                      boxShadow: isTaken
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                    ),
+                    alignment: Alignment.center,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        seat,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isTaken ? Colors.red.shade700 : Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
           ),
@@ -267,54 +295,6 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  // Seat box widget: white background, border shows selected/taken state, seat label large
-  Widget _seatBox(
-    String seat,
-    bool isSelected,
-    bool isTaken,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: isTaken ? null : onTap,
-      child: Container(
-        width: 70,
-        height: 48,
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isTaken
-                ? Colors.red.shade400
-                : (isSelected ? Colors.grey.shade800 : Colors.grey.shade400),
-            width: isSelected ? 2.4 : 1.2,
-          ),
-          boxShadow: isTaken
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-        ),
-        alignment: Alignment.center,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            seat,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isTaken ? Colors.red.shade700 : Colors.black,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _bookFlight() async {
     if (!_formKey.currentState!.validate() || _travelDate == null) {
       if (_travelDate == null) {
@@ -325,7 +305,6 @@ class _BookingPageState extends State<BookingPage> {
       return;
     }
 
-    // Ensure seats selected for those who require seat
     for (int i = 0; i < _totalPassengers; i++) {
       if (_passengerRequiresSeat(i) &&
           (_seatNumbers[i] == null || _seatNumbers[i]!.isEmpty)) {
@@ -360,7 +339,6 @@ class _BookingPageState extends State<BookingPage> {
         };
       });
 
-      // For backward compatibility, create a top-level seatNumber string (comma separated)
       final topLevelSeatString = _seatNumbers
           .where((s) => s != null && s.isNotEmpty)
           .join(',');
@@ -378,6 +356,7 @@ class _BookingPageState extends State<BookingPage> {
         'passengers': passengers,
         'travelDate': _travelDate!.toIso8601String(),
         'returnDate': widget.returnDate?.toIso8601String(),
+        'returnFlight': widget.returnFlight ?? {},
         'numPassengers': _totalPassengers,
         'notes': _notes.text,
         'seatClass': _seatClass,
@@ -392,7 +371,19 @@ class _BookingPageState extends State<BookingPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('✅ Booking Confirmed!')));
-        Navigator.pop(context);
+        if (user != null) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+            (route) => false,
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User not found. Please log in again.'),
+            ),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -494,7 +485,6 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     final flight = widget.flight;
@@ -523,6 +513,34 @@ class _BookingPageState extends State<BookingPage> {
           key: _formKey,
           child: ListView(
             children: [
+              // If returnFlight exists, show a small summary header
+              if (widget.returnFlight != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Round Trip Selected',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Outbound: ${flight?['departure']} → ${flight?['destination']} (${_travelDate?.toLocal().toString().split(' ')[0] ?? ''})',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Return: ${widget.returnFlight?['departure']} → ${widget.returnFlight?['destination']} (${_returnDate?.toLocal().toString().split(' ')[0] ?? ''})',
+                      ),
+                    ],
+                  ),
+                ),
+
               // PASSENGER COUNTS (Adults / Children / Infants)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -602,7 +620,7 @@ class _BookingPageState extends State<BookingPage> {
 
               const SizedBox(height: 12),
 
-              // PASSENGER FORMS (expanded to total passengers)
+              // PASSENGER FORMS
               ...List.generate(_totalPassengers, (i) {
                 final role = _ageGroups[i];
                 return Column(
@@ -640,7 +658,6 @@ class _BookingPageState extends State<BookingPage> {
                           : 'Enter a valid email',
                     ),
 
-                    // Infant seating option visible only for infants
                     if (role == 'Infant (0-2)')
                       _styledDropdown<String>(
                         label: 'Infant Seating',
@@ -654,7 +671,6 @@ class _BookingPageState extends State<BookingPage> {
                         },
                       ),
 
-                    // Seat display + pick button (no dropdown). If infant on lap -> hide pick button
                     _styledContainer(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -699,7 +715,7 @@ class _BookingPageState extends State<BookingPage> {
                                   style: TextStyle(color: Colors.black87),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[300], // GRAY
+                                  backgroundColor: Colors.grey[300],
                                   foregroundColor: Colors.black87,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -723,7 +739,7 @@ class _BookingPageState extends State<BookingPage> {
 
               const SizedBox(height: 12),
 
-              // TRAVEL DATE UI
+              // TRAVEL DATE UI (locked if provided)
               _styledContainer(
                 child: InkWell(
                   onTap: widget.travelDate == null
@@ -741,7 +757,7 @@ class _BookingPageState extends State<BookingPage> {
                           if (picked != null)
                             setState(() => _travelDate = picked);
                         }
-                      : null, // disabled when prefilled (search -> fixed date)
+                      : null,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
@@ -803,7 +819,6 @@ class _BookingPageState extends State<BookingPage> {
 
               const SizedBox(height: 16),
 
-              // SEATING INFO summary & seat class selector
               const Text(
                 'Seating Information',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -821,7 +836,6 @@ class _BookingPageState extends State<BookingPage> {
                 onChanged: (v) async {
                   setState(() {
                     _seatClass = v!;
-                    // Clear chosen seats when class changes
                     _seatNumbers = List<String?>.generate(
                       _totalPassengers,
                       (_) => null,
@@ -843,7 +857,6 @@ class _BookingPageState extends State<BookingPage> {
 
               const Divider(height: 30),
 
-              // PAYMENT METHOD (unchanged)
               const Text(
                 'Payment Method',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -869,7 +882,6 @@ class _BookingPageState extends State<BookingPage> {
 
               const SizedBox(height: 16),
 
-              // Confirm Booking button: blue background, white icon & text
               ElevatedButton.icon(
                 onPressed: _loading ? null : _bookFlight,
                 icon: _loading
@@ -908,7 +920,6 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  // small widget for +/- controls
   Widget _countControl(
     String label,
     int value,
