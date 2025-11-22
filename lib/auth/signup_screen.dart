@@ -202,7 +202,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
           // GIF overlay
           Positioned.fill(
-            child: Image.asset('assets/earth.gif', fit: BoxFit.cover),
+            child: Image.asset('lib/assets/earth2.gif', fit: BoxFit.cover),
           ),
 
           // Main content
