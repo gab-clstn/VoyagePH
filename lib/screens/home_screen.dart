@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
-    // Check if user has bookings for My Bookings tab
     if (index == 2 && !_hasBooking) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -55,7 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // If navigating to My Bookings, refresh booking status
     if (index == 2) {
       await _checkUserBooking();
     }
@@ -69,17 +67,50 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
-          NavigationDestination(
-            icon: Icon(Icons.bookmarks),
-            label: 'My Bookings',
+      bottomNavigationBar: Stack(
+        alignment: AlignmentDirectional.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: _onItemTapped,
+            destinations: const [
+              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+              NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
+              NavigationDestination(icon: Icon(Icons.bookmarks), label: 'My Bookings'),
+              NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+            ],
           ),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+          Positioned(
+            top: -15, // Adjust to overlap on nav bar
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedIndex = 1; // For example, navigate to Flights
+                });
+              },
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white, // Optional background
+                  border: Border.all(color: Colors.blue, width: 3),
+                  image: const DecorationImage(
+                    image: AssetImage('lib/assets/app_icon.png'), // replace with your file path
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
