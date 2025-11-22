@@ -15,6 +15,16 @@ class FlightTicketPage extends StatelessWidget {
     super.key,
   });
 
+  Future<bool> _hasPendingCancelRequest() async {
+    final q = await FirebaseFirestore.instance
+        .collection('cancel_requests')
+        .where('bookingId', isEqualTo: bookingId)
+        .where('status', isEqualTo: 'Pending')
+        .limit(1)
+        .get();
+    return q.docs.isNotEmpty;
+  }
+
   Future<void> _requestCancelBooking(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -229,6 +239,17 @@ class FlightTicketPage extends StatelessWidget {
 
     // ---------------------------------------------------------
 
+    // determine booking status and whether cancel action should be shown
+    final status =
+        (bookingData['status'] ?? '').toString().toLowerCase().trim();
+    final excludedStatuses = {
+      'cancelled',
+      'rejected',
+      'cancel_denied',
+      'deny_cancel'
+    };
+    final isFinalized = excludedStatuses.contains(status);
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
@@ -311,22 +332,54 @@ class FlightTicketPage extends StatelessWidget {
               ),
             ),
 
-            // CANCEL BUTTON
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            // CANCEL BUTTON / STATUS AREA
+            if (isFinalized)
+              // Booking already finalized — hide cancel action
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'This booking has been ${status}.',
+                  style: GoogleFonts.poppins(color: Colors.redAccent),
                 ),
+              )
+            else
+              FutureBuilder<bool>(
+                future: _hasPendingCancelRequest(),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 48,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final pending = snap.data == true;
+                  if (pending) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Cancellation requested',
+                        style: GoogleFonts.poppins(
+                            color: Colors.orange, fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  }
+                  return ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      backgroundColor: Colors.redAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.cancel_outlined, color: Colors.white),
+                    label: const Text(
+                      'Cancel Booking',
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                    onPressed: () => _requestCancelBooking(context),
+                  );
+                },
               ),
-              icon: const Icon(Icons.cancel_outlined, color: Colors.white),
-              label: const Text(
-                'Cancel Booking',
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-              onPressed: () => _requestCancelBooking(context),
-            ),
           ],
         ),
       ),
