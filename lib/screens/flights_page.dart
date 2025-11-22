@@ -10,7 +10,13 @@ class FlightsPage extends StatefulWidget {
   final String? to;
   final DateTime? departureDate;
 
-  const FlightsPage({super.key, this.from, this.to, this.departureDate});
+  const FlightsPage({
+    super.key,
+    this.from,
+    this.to,
+    this.departureDate,
+    DateTime? returnDate,
+  });
 
   @override
   State<FlightsPage> createState() => _FlightsPageState();
