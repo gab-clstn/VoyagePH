@@ -85,28 +85,28 @@ class FlightTicketPage extends StatelessWidget {
         ? bookingData['travelDate'].toString().split('T')[0]
         : '';
     final seatClass = bookingData['seatClass'] ?? '';
-    final totalFare = bookingData['fareTotal'] ?? 0;
+    final totalFare = bookingData['totalFare'] ?? 0;
     final notes = bookingData['notes'] ?? '';
+    final paymentMethod = bookingData['paymentMethod'] ?? '';
     final bookingType = bookingData['bookingType'] ?? 'Single Flight';
-    final passengers = (bookingData['passengers'] as List<dynamic>? ?? []).map((
-      p,
-    ) {
-      // If your Firestore stores seatNumber per passenger, use p['seatNumber']
-      return {
-        'name': p['name'] ?? '',
-        'ageGroup': p['ageGroup'] ?? '',
-        'seatNumber': p['seatNumber'] ?? bookingData['seatNumber'] ?? 'N/A',
-        'paymentMethod':
-            p['paymentMethod'] ?? bookingData['paymentMethod'] ?? '',
-      };
-    }).toList();
+
+    final passengers = (bookingData['passengers'] as List<dynamic>? ?? [])
+        .map(
+          (p) => {
+            'name': p['name'] ?? '',
+            'ageGroup': p['ageGroup'] ?? '',
+            'seatNumber': p['seatNumber'] ?? 'N/A',
+            'infantSeating': p['infantSeating'] ?? '',
+          },
+        )
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         title: Text(
-          'Flight Tickets',
+          'Flight Ticket',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
               fontWeight: FontWeight.w600,
@@ -117,25 +117,37 @@ class FlightTicketPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: ListView(
+        child: Column(
           children: [
-            ...passengers.map(
-              (p) => _buildTicketCard(
-                passenger: p,
-                flightNumber: flightNumber,
-                airline: airline,
-                departure: departure,
-                destination: destination,
-                travelDate: travelDate,
-                seatClass: seatClass,
-                totalFare: totalFare,
-                notes: notes,
-                bookingType: bookingType,
+            Expanded(
+              child: ListView.builder(
+                itemCount: passengers.length,
+                itemBuilder: (context, index) {
+                  final passenger = passengers[index];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: _singleTicket(
+                      passenger: passenger,
+                      flightNumber: flightNumber,
+                      airline: airline,
+                      departure: departure,
+                      destination: destination,
+                      travelDate: travelDate,
+                      seatClass: seatClass,
+                      totalFare: totalFare,
+                      paymentMethod: paymentMethod,
+                      notes: notes,
+                      bookingType: bookingType,
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 24),
+
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
@@ -157,7 +169,7 @@ class FlightTicketPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTicketCard({
+  Widget _singleTicket({
     required Map<String, dynamic> passenger,
     required String flightNumber,
     required String airline,
@@ -165,12 +177,12 @@ class FlightTicketPage extends StatelessWidget {
     required String destination,
     required String travelDate,
     required String seatClass,
-    required double totalFare,
+    required dynamic totalFare,
+    required String paymentMethod,
     required String notes,
     required String bookingType,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -254,23 +266,34 @@ class FlightTicketPage extends StatelessWidget {
               ],
             ),
           ),
+
           const Divider(thickness: 1),
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ticketRow('Booking Type', bookingType),
-                _ticketRow('Name', passenger['name'] ?? 'N/A'),
-                _ticketRow('Age Group', passenger['ageGroup'] ?? 'N/A'),
-                _ticketRow('Seat', passenger['seatNumber'] ?? 'N/A'),
-                _ticketRow(
-                  'Payment Method',
-                  passenger['paymentMethod'] ?? 'N/A',
+                Text(
+                  'Booking Type: $bookingType',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
                 ),
+
+                const SizedBox(height: 12),
+                const Text(
+                  'Passenger Information',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _ticketRow('Name', passenger['name']),
+                _ticketRow('Age Group', passenger['ageGroup']),
+                if (passenger['ageGroup'] == 'Infant (0-2)')
+                  _ticketRow('Infant Seating', passenger['infantSeating']),
+                _ticketRow('Seat', passenger['seatNumber']),
                 _ticketRow('Date', travelDate),
                 _ticketRow('Class', seatClass),
-                _ticketRow('Total Fare', '₱$totalFare'),
+                _ticketRow('Fare', '₱$totalFare'),
+                _ticketRow('Payment', paymentMethod),
                 if (notes.isNotEmpty) _ticketRow('Notes', notes),
               ],
             ),
@@ -284,32 +307,16 @@ class FlightTicketPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-                fontSize: 14,
-              ),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
             ),
           ),
-          Expanded(
-            flex: 4,
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              softWrap: true,
-              overflow: TextOverflow.visible,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
+          Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         ],
       ),
     );
