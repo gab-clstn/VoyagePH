@@ -14,7 +14,7 @@ class AuthLanding extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // 🔹 Gradient first (background)
+          // 🔹 Gradient background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -29,11 +29,12 @@ class AuthLanding extends StatelessWidget {
             ),
           ),
 
+          // 🔹 GIF overlay
           Positioned.fill(
             child: Image.asset('lib/assets/earth2.gif', fit: BoxFit.cover),
           ),
 
-          // 🔹 Main content (top part)
+          // 🔹 Main content card
           SafeArea(
             child: Center(
               child: Padding(
@@ -54,19 +55,29 @@ class AuthLanding extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // 🔹 LOGO INSIDE BLUE OUTLINED CIRCLE
                           Container(
-                            padding: const EdgeInsets.all(20),
+                            width: 120,
+                            height: 120,
                             decoration: BoxDecoration(
-                              color: primaryBlue.withOpacity(0.1),
                               shape: BoxShape.circle,
+                              border: Border.all(color: primaryBlue, width: 3),
+                              color: Colors.white,
                             ),
-                            child: const Icon(
-                              Icons.flight_takeoff,
-                              size: 80,
-                              color: primaryBlue,
+                            child: ClipOval(
+                              child: Transform.scale(
+                                scale:
+                                    1.3, // increase to zoom more, decrease to zoom less
+                                child: Image.asset(
+                                  'lib/assets/app_icon.png',
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
                           ),
+
                           const SizedBox(height: 24),
+
                           Text(
                             "VoyagePH",
                             style: GoogleFonts.poppins(
@@ -75,7 +86,9 @@ class AuthLanding extends StatelessWidget {
                               color: Colors.black87,
                             ),
                           ),
+
                           const SizedBox(height: 12),
+
                           Text(
                             "Book flights across the Philippines.\nSign in or create an account to continue.",
                             style: GoogleFonts.poppins(
@@ -84,7 +97,10 @@ class AuthLanding extends StatelessWidget {
                             ),
                             textAlign: TextAlign.center,
                           ),
+
                           const SizedBox(height: 40),
+
+                          // 🔹 Log In button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -117,7 +133,10 @@ class AuthLanding extends StatelessWidget {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 16),
+
+                          // 🔹 Create account button
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
@@ -151,7 +170,10 @@ class AuthLanding extends StatelessWidget {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 16),
+
+                          // 🔹 Guest
                           TextButton(
                             onPressed: () {
                               Navigator.push(

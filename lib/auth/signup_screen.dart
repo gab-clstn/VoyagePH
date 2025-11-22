@@ -240,14 +240,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  "Create Account",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87,
+                                Center(
+                                  child: Text(
+                                    "CREATE ACCOUNT", // all caps
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryBlue, // blue color
+                                    ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 30),
                                 Form(
                                   key: _formKey,

@@ -346,22 +346,45 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  "Log In",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87,
+                                Center(
+                                  child: Text(
+                                    "LOG IN", // all caps
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryBlue, // blue color
+                                    ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 20),
-                                const Center(
-                                  child: Icon(
-                                    Icons.person_pin,
-                                    size: 90,
-                                    color: primaryBlue,
+                                Center(
+                                  child: Container(
+                                    width: 120, // circle size
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: primaryBlue,
+                                        width: 3,
+                                      ),
+                                      color: Colors
+                                          .white, // background inside circle
+                                    ),
+                                    child: ClipOval(
+                                      child: Transform.scale(
+                                        scale:
+                                            1.2, // adjust to zoom image inside the circle
+                                        child: Image.asset(
+                                          'lib/assets/app_icon.png',
+                                          fit: BoxFit
+                                              .cover, // crops/zooms the image inside the circle
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 30),
                                 Form(
                                   key: _formKey,
