@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class FlightTicketPage extends StatelessWidget {
   final Map<String, dynamic> bookingData;
@@ -85,7 +86,19 @@ class FlightTicketPage extends StatelessWidget {
         ? bookingData['travelDate'].toString().split('T')[0]
         : '';
     final seatClass = bookingData['seatClass'] ?? '';
-    final totalFare = bookingData['totalFare'] ?? 0;
+
+    final totalFare =
+        bookingData['fareTotal'] ??
+        bookingData['totalFare'] ??
+        bookingData['fare'] ??
+        bookingData['finalTotal'] ??
+        bookingData['amount'] ??
+        bookingData['price'] ??
+        0;
+
+    // 🔥 FORMAT FARE HERE
+    final formattedFare = NumberFormat('#,##0.00').format(totalFare);
+
     final notes = bookingData['notes'] ?? '';
     final paymentMethod = bookingData['paymentMethod'] ?? '';
     final bookingType = bookingData['bookingType'] ?? 'Single Flight';
@@ -138,7 +151,7 @@ class FlightTicketPage extends StatelessWidget {
                       destination: destination,
                       travelDate: travelDate,
                       seatClass: seatClass,
-                      totalFare: totalFare,
+                      totalFare: formattedFare, // 🔥 formatted value passed
                       paymentMethod: paymentMethod,
                       notes: notes,
                       bookingType: bookingType,
@@ -177,7 +190,7 @@ class FlightTicketPage extends StatelessWidget {
     required String destination,
     required String travelDate,
     required String seatClass,
-    required dynamic totalFare,
+    required String totalFare,
     required String paymentMethod,
     required String notes,
     required String bookingType,
@@ -292,7 +305,10 @@ class FlightTicketPage extends StatelessWidget {
                 _ticketRow('Seat', passenger['seatNumber']),
                 _ticketRow('Date', travelDate),
                 _ticketRow('Class', seatClass),
+
+                // 🔥 Formatted fare here
                 _ticketRow('Fare', '₱$totalFare'),
+
                 _ticketRow('Payment', paymentMethod),
                 if (notes.isNotEmpty) _ticketRow('Notes', notes),
               ],

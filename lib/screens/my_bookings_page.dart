@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'flight_ticket_page.dart'; // <-- new page
+import 'flight_ticket_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -12,10 +12,12 @@ class MyBookingsPage extends StatefulWidget {
 }
 
 class _MyBookingsPageState extends State<MyBookingsPage> {
-  String? _justCancelledBookingId; // Track the booking just requested for cancellation
+  String? _justCancelledBookingId;
 
   Future<void> _requestCancelBooking(
-      BuildContext context, DocumentSnapshot doc) async {
+    BuildContext context,
+    DocumentSnapshot doc,
+  ) async {
     final user = FirebaseAuth.instance.currentUser;
     final data = doc.data() as Map<String, dynamic>;
 
@@ -26,11 +28,13 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Yes')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
         ],
       ),
     );
@@ -47,7 +51,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       if (existing.docs.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('You already requested to cancel this booking')),
+            content: Text('You already requested to cancel this booking'),
+          ),
         );
         return;
       }
@@ -65,17 +70,15 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         'status': 'Pending',
       });
 
-      setState(() {
-        _justCancelledBookingId = doc.id;
-      });
+      setState(() => _justCancelledBookingId = doc.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cancellation request submitted')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -125,8 +128,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             return Center(
               child: Text(
                 'You have no bookings yet.',
-                style:
-                    GoogleFonts.poppins(textStyle: const TextStyle(fontSize: 16)),
+                style: GoogleFonts.poppins(fontSize: 16),
               ),
             );
           }
@@ -141,24 +143,41 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
+
+                  // 🔥 FIXED: Correct total fare value
+                  final totalFare =
+                      data['fareTotal'] ??
+                      data['totalFare'] ??
+                      data['fare'] ??
+                      data['finalTotal'] ??
+                      0;
+
                   final flightName =
                       '${data['airline'] ?? ''} ${data['flightNumber'] ?? ''}';
 
-                  final passengerList = (data['passengers'] as List<dynamic>?) ?? [];
+                  final passengerList =
+                      (data['passengers'] as List<dynamic>?) ?? [];
+
                   final passengers = passengerList.isNotEmpty
                       ? passengerList
-                          .map((p) => (p as Map<String, dynamic>)['name'] ?? '')
-                          .where((n) => n.isNotEmpty)
-                          .join(', ')
+                            .map(
+                              (p) => (p as Map<String, dynamic>)['name'] ?? '',
+                            )
+                            .where((n) => n.isNotEmpty)
+                            .join(', ')
                       : (data['passengerNames'] as String?) ?? '';
 
                   String seats;
                   if (passengerList.isNotEmpty) {
                     final perSeats = passengerList.map((p) {
                       final s = (p as Map<String, dynamic>)['seatNumber'];
-                      return s != null && s.toString().isNotEmpty ? s.toString() : null;
+                      return s != null && s.toString().isNotEmpty
+                          ? s.toString()
+                          : null;
                     }).toList();
+
                     final hasAnyPerSeat = perSeats.any((s) => s != null);
+
                     if (hasAnyPerSeat) {
                       final fallback = data['seatNumber']?.toString() ?? 'N/A';
                       seats = perSeats.map((s) => s ?? fallback).join(', ');
@@ -169,23 +188,37 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                     seats = data['seatNumber']?.toString() ?? 'N/A';
                   }
 
-                  final status = (data['status'] ?? '').toString().toLowerCase();
+                  final status = (data['status'] ?? '')
+                      .toString()
+                      .toLowerCase();
+
                   final cancelRequested = cancelDocs.any(
-                      (c) => (c.data() as Map<String, dynamic>)['bookingId'] ==
-                          docs[index].id &&
-                          (c.data() as Map<String, dynamic>)['status'] ==
-                              'Pending');
-                  final highlightRed = _justCancelledBookingId == docs[index].id;
+                    (c) =>
+                        (c.data() as Map<String, dynamic>)['bookingId'] ==
+                            docs[index].id &&
+                        (c.data() as Map<String, dynamic>)['status'] ==
+                            'Pending',
+                  );
+
+                  final highlightRed =
+                      _justCancelledBookingId == docs[index].id;
 
                   final baseStyle = GoogleFonts.poppins(
-                    textStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
                   );
-                  final labelStyle = baseStyle.copyWith(fontWeight: FontWeight.bold);
+
+                  final labelStyle = baseStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                  );
+
                   final statusColor = status == 'confirmed'
                       ? Colors.green
                       : (status == 'rejected' || status == 'cancelled')
-                          ? Colors.red
-                          : (status == 'pending' ? Colors.orange : Colors.black87);
+                      ? Colors.red
+                      : (status == 'pending' ? Colors.orange : Colors.black87);
 
                   return Card(
                     shape: RoundedRectangleBorder(
@@ -197,10 +230,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                     color: status == 'confirmed'
                         ? Colors.green.withOpacity(0.08)
                         : (status == 'rejected' || status == 'cancelled')
-                            ? Colors.red.withOpacity(0.08)
-                            : status == 'pending'
-                                ? Colors.orange.withOpacity(0.08)
-                                : Colors.white,
+                        ? Colors.red.withOpacity(0.08)
+                        : status == 'pending'
+                        ? Colors.orange.withOpacity(0.08)
+                        : Colors.white,
                     elevation: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     shadowColor: Colors.black26,
@@ -218,47 +251,71 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                         );
                       },
                       child: ListTile(
-                        leading: const Icon(Icons.airplane_ticket,
-                            color: Colors.blue, size: 32),
+                        leading: const Icon(
+                          Icons.airplane_ticket,
+                          color: Colors.blue,
+                          size: 32,
+                        ),
                         title: Text(
                           flightName,
                           style: GoogleFonts.poppins(
                             textStyle: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                         subtitle: Text.rich(
-                          TextSpan(style: baseStyle, children: [
-                            TextSpan(text: 'Passenger: ', style: labelStyle),
-                            TextSpan(text: passengers.isNotEmpty ? passengers : 'N/A'),
-                            const TextSpan(text: '\n'),
-                            TextSpan(text: 'Seat: ', style: labelStyle),
-                            TextSpan(text: seats),
-                            const TextSpan(text: '\n'),
-                            TextSpan(text: 'Class: ', style: labelStyle),
-                            TextSpan(text: data['seatClass'] ?? 'N/A'),
-                            const TextSpan(text: '\n'),
-                            TextSpan(text: 'Date: ', style: labelStyle),
-                            TextSpan(
-                                text: data['travelDate']?.toString().split('T')[0] ?? 'N/A'),
-                            const TextSpan(text: '\n'),
-                            TextSpan(text: 'Status: ', style: labelStyle),
-                            TextSpan(
+                          TextSpan(
+                            style: baseStyle,
+                            children: [
+                              TextSpan(text: 'Passenger: ', style: labelStyle),
+                              TextSpan(
+                                text: passengers.isNotEmpty
+                                    ? passengers
+                                    : 'N/A',
+                              ),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: 'Seat: ', style: labelStyle),
+                              TextSpan(text: seats),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: 'Class: ', style: labelStyle),
+                              TextSpan(text: data['seatClass'] ?? 'N/A'),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: 'Date: ', style: labelStyle),
+                              TextSpan(
+                                text:
+                                    data['travelDate']?.toString().split(
+                                      'T',
+                                    )[0] ??
+                                    'N/A',
+                              ),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: 'Status: ', style: labelStyle),
+                              TextSpan(
                                 text: (data['status'] ?? 'N/A').toString(),
-                                style: baseStyle.copyWith(color: statusColor)),
-                            const TextSpan(text: '\n'),
-                            TextSpan(text: 'Total: ', style: labelStyle),
-                            TextSpan(text: '₱${(data['fareTotal'] ?? 0).toString()}'),
-                          ]),
+                                style: baseStyle.copyWith(color: statusColor),
+                              ),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: 'Total: ', style: labelStyle),
+
+                              /// 🔥 FIXED LINE: now uses the actual fare
+                              TextSpan(text: '₱${totalFare.toString()}'),
+                            ],
+                          ),
                         ),
                         trailing: (status == 'pending' || status == 'confirmed')
                             ? IconButton(
-                                icon: const Icon(Icons.cancel_outlined,
-                                    color: Colors.redAccent),
+                                icon: const Icon(
+                                  Icons.cancel_outlined,
+                                  color: Colors.redAccent,
+                                ),
                                 onPressed: cancelRequested
                                     ? null
                                     : () => _requestCancelBooking(
-                                        context, docs[index]),
+                                        context,
+                                        docs[index],
+                                      ),
                               )
                             : null,
                       ),

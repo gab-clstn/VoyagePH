@@ -33,15 +33,14 @@ class _BookingPageState extends State<BookingPage> {
 
   List<String> _availableSeats = [];
 
-  // **Dynamic passenger controllers**
+  // Dynamic passenger controllers
   List<TextEditingController> _nameControllers = [];
   List<TextEditingController> _contactControllers = [];
   List<TextEditingController> _emailControllers = [];
-  List<String> _ageGroups = []; // added: store Adult/Child/Infant per passenger
-  List<String> _infantSeating = []; // values: 'On Lap', 'On Seat' (default 'On Seat')
+  List<String> _ageGroups = [];
+  List<String> _infantSeating = [];
   List<String?> _seatNumbers = [];
-  
-  
+
   @override
   void initState() {
     super.initState();
@@ -64,22 +63,21 @@ class _BookingPageState extends State<BookingPage> {
       _numPassengers,
       (_) => TextEditingController(),
     );
-    _ageGroups = List.generate(_numPassengers, (_) => 'Adult'); // default to Adult
+    _ageGroups = List.generate(_numPassengers, (_) => 'Adult');
     _infantSeating = List.generate(_numPassengers, (_) => 'On Seat');
-    _seatNumbers = List<String?>.generate(_numPassengers, (_) => null);
+    _seatNumbers = List.generate(_numPassengers, (_) => null);
   }
 
   void _updatePassengerControllers(int newCount) {
-    // Add controllers if increasing
     while (_nameControllers.length < newCount) {
       _nameControllers.add(TextEditingController());
       _contactControllers.add(TextEditingController());
       _emailControllers.add(TextEditingController());
-      _ageGroups.add('Adult'); // keep ageGroups in sync
+      _ageGroups.add('Adult');
       _infantSeating.add('On Seat');
       _seatNumbers.add(null);
     }
-    // Remove controllers if decreasing
+
     while (_nameControllers.length > newCount) {
       _nameControllers.removeLast();
       _contactControllers.removeLast();
@@ -90,7 +88,6 @@ class _BookingPageState extends State<BookingPage> {
     }
   }
 
-  // returns seat options for a passenger (avoids seats already chosen by other passengers)
   List<String> _seatOptionsForPassenger(int idx) {
     final taken = _seatNumbers
         .asMap()
@@ -98,20 +95,22 @@ class _BookingPageState extends State<BookingPage> {
         .where((e) => e.key != idx && e.value != null)
         .map((e) => e.value!)
         .toSet();
+
     final options = <String>{};
     options.addAll(_availableSeats);
-    if (_seatNumbers[idx] != null) options.add(_seatNumbers[idx]!); // keep current selection visible
+
+    if (_seatNumbers[idx] != null) options.add(_seatNumbers[idx]!);
+
     options.removeWhere((s) => taken.contains(s));
+
     final list = options.toList()..sort();
     return list;
   }
 
-  // whether this passenger needs a seat (Infant on lap => no seat)
   bool _passengerRequiresSeat(int i) {
-    final age = (i < _ageGroups.length) ? _ageGroups[i] : 'Adult';
+    final age = _ageGroups[i];
     if (age == 'Infant (0-2)') {
-      final seating = (i < _infantSeating.length) ? _infantSeating[i] : 'On Seat';
-      return seating == 'On Seat';
+      return _infantSeating[i] == 'On Seat';
     }
     return true;
   }
@@ -135,20 +134,16 @@ class _BookingPageState extends State<BookingPage> {
         multiplier = 1.0;
     }
 
-   // double fare = _baseFare * multiplier * _numPassengers;
-
     double total = 0.0;
+
     for (int i = 0; i < _numPassengers; i++) {
-      final age = (i < _ageGroups.length) ? _ageGroups[i] : 'Adult';
-      if (age == 'Infant (0-2)') {
-        final seating = (i < _infantSeating.length) ? _infantSeating[i] : 'On Seat';
-        if (seating == 'On Lap') {
-          total += 1000; // infant on lap fixed charge
+      if (_ageGroups[i] == 'Infant (0-2)') {
+        if (_infantSeating[i] == 'On Lap') {
+          total += 1000;
         } else {
-          total += _baseFare * multiplier; // infant on seat: same as adult
+          total += _baseFare * multiplier;
         }
       } else {
-        // Adult or Child: same fare (no discount specified)
         total += _baseFare * multiplier;
       }
     }
@@ -169,11 +164,12 @@ class _BookingPageState extends State<BookingPage> {
         .toList();
 
     final allSeats = _seatMap[_seatClass] ?? [];
+
     final available = allSeats.where((s) => !bookedSeats.contains(s)).toList();
 
     setState(() {
       _availableSeats = available;
-      _seatNumbers = List<String?>.generate(_numPassengers, (_) => null);
+      _seatNumbers = List.generate(_numPassengers, (_) => null);
       _seatNumber = null;
     });
   }
@@ -183,28 +179,34 @@ class _BookingPageState extends State<BookingPage> {
       return;
     }
 
-    // ensure each passenger that requires a seat has one selected
     for (int i = 0; i < _numPassengers; i++) {
-      if (_passengerRequiresSeat(i) && (_seatNumbers[i] == null || _seatNumbers[i]!.isEmpty)) {
+      if (_passengerRequiresSeat(i) &&
+          (_seatNumbers[i] == null || _seatNumbers[i]!.isEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select seat for each passenger that requires one')),
+          const SnackBar(
+            content: Text(
+              'Please select seat for each passenger that requires one',
+            ),
+          ),
         );
         return;
       }
     }
 
     setState(() => _loading = true);
+
     try {
       final user = FirebaseAuth.instance.currentUser;
 
-      // Collect all passenger info
       List<Map<String, String>> passengers = List.generate(_numPassengers, (i) {
         return {
           'name': _nameControllers[i].text,
           'contact': _contactControllers[i].text,
           'email': _emailControllers[i].text,
-          'ageGroup': _ageGroups[i], // added
-          'infantSeating': _ageGroups[i] == 'Infant (0-2)' ? _infantSeating[i] : '',
+          'ageGroup': _ageGroups[i],
+          'infantSeating': _ageGroups[i] == 'Infant (0-2)'
+              ? _infantSeating[i]
+              : '',
           'seatNumber': _seatNumbers[i] ?? '',
         };
       });
@@ -212,6 +214,8 @@ class _BookingPageState extends State<BookingPage> {
       await FirebaseFirestore.instance.collection('bookings').add({
         'userId': user?.uid,
         'flightId': widget.flight?['id'],
+        'airline': widget.flight?['airline'],
+        'flightNumber': widget.flight?['flightNumber'],
         'flightName': widget.flight?['name'],
         'departure': widget.flight?['departure'],
         'destination': widget.flight?['destination'],
@@ -259,7 +263,6 @@ class _BookingPageState extends State<BookingPage> {
     super.dispose();
   }
 
-  // Styled TextField / Dropdown container
   Widget _styledContainer({required Widget child}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -342,6 +345,10 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
+  // ------------------------------------------------------
+  // ---------------------- UI ----------------------------
+  // ------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -358,38 +365,39 @@ class _BookingPageState extends State<BookingPage> {
             ),
           ),
         ),
-
         centerTitle: true,
-        iconTheme: const IconThemeData(
-          color: Colors.white, // back button color
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 4,
         shadowColor: Colors.black26,
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
+              // ------------------ PASSENGERS ------------------
               ...List.generate(_numPassengers, (i) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _numPassengers > 1
-                          ? 'Passenger ${i + 1} Information'
-                          : 'Passenger Information',
+                          ? "Passenger ${i + 1} Information"
+                          : "Passenger Information",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
                       ),
                     ),
+
                     _styledTextField(
                       controller: _nameControllers[i],
                       labelText: 'Full Name',
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
+
                     _styledTextField(
                       controller: _contactControllers[i],
                       labelText: 'Contact Number',
@@ -402,6 +410,7 @@ class _BookingPageState extends State<BookingPage> {
                         return null;
                       },
                     ),
+
                     _styledTextField(
                       controller: _emailControllers[i],
                       labelText: 'Email Address',
@@ -409,7 +418,8 @@ class _BookingPageState extends State<BookingPage> {
                           ? null
                           : 'Enter a valid email',
                     ),
-                    // NEW: Age group dropdown (Adult / Child / Infant)
+
+                    // Age group dropdown
                     _styledDropdown<String>(
                       label: 'Age Group',
                       value: _ageGroups[i],
@@ -417,7 +427,6 @@ class _BookingPageState extends State<BookingPage> {
                       onChanged: (v) {
                         setState(() {
                           _ageGroups[i] = v!;
-                          // Reset infant seating to default when switching to Infant
                           if (_ageGroups[i] != 'Infant (0-2)') {
                             _infantSeating[i] = 'On Seat';
                           } else {
@@ -428,38 +437,30 @@ class _BookingPageState extends State<BookingPage> {
                       },
                       validator: (v) => v == null ? 'Select age group' : null,
                     ),
-                    // If Infant, show seating choice
+
                     if (_ageGroups[i] == 'Infant (0-2)')
                       _styledDropdown<String>(
                         label: 'Infant Seating',
                         value: _infantSeating[i],
                         items: ['On Lap', 'On Seat'],
                         onChanged: (v) {
-                          setState(() => _infantSeating[i] = v!);
+                          setState(() {
+                            _infantSeating[i] = v!;
+                          });
                           _updateFare();
                         },
-                        validator: (v) =>
-                            v == null ? 'Select infant seating' : null,
                       ),
                   ],
                 );
               }),
+
               const SizedBox(height: 12),
-              // Travel date
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                ), // adds space above and below
-                child: ListTile(
-                  contentPadding: EdgeInsets
-                      .zero, // optional, keeps it aligned with other fields
-                  title: Text(
-                    _travelDate == null
-                        ? 'Select Travel Date'
-                        : 'Travel Date: ${_travelDate!.toLocal().toString().split(' ')[0]}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
+
+              // -----------------------------------------------------
+              // ------------------ NEW TRAVEL DATE UI ---------------
+              // -----------------------------------------------------
+              _styledContainer(
+                child: InkWell(
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -467,12 +468,53 @@ class _BookingPageState extends State<BookingPage> {
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
-                    if (picked != null) setState(() => _travelDate = picked);
+                    if (picked != null) {
+                      setState(() {
+                        _travelDate = picked;
+                      });
+                    }
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _travelDate == null
+                              ? "Select Travel Date"
+                              : "Travel Date: ${_travelDate!.toLocal().toString().split(' ')[0]}",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _travelDate == null
+                                ? Colors.grey[600]
+                                : Colors.black,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.calendar_month,
+                          color: Colors.blueGrey,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
 
-              // Passenger count dropdown
+              if (_travelDate == null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, top: 4),
+                  child: Text(
+                    'Please select a travel date',
+                    style: TextStyle(color: Colors.red[700], fontSize: 13),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              // -----------------------------------------------------
+              // ------------------ PASSENGER COUNT ------------------
+              // -----------------------------------------------------
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -521,11 +563,17 @@ class _BookingPageState extends State<BookingPage> {
                   ),
                 ],
               ),
+
               const Divider(height: 30),
+
+              // -----------------------------------------------------
+              // ------------------ SEATING INFO ---------------------
+              // -----------------------------------------------------
               const Text(
                 'Seating Information',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
+
               _styledDropdown<String>(
                 label: 'Seat Class',
                 value: _seatClass,
@@ -538,16 +586,20 @@ class _BookingPageState extends State<BookingPage> {
                 onChanged: (v) async {
                   setState(() {
                     _seatClass = v!;
-                    _seatNumbers = List<String?>.generate(_numPassengers, (_) => null);
+                    _seatNumbers = List<String?>.generate(
+                      _numPassengers,
+                      (_) => null,
+                    );
                   });
                   _updateFare();
                   await _fetchAvailableSeats();
                 },
               ),
 
-              // per-passenger seat selectors (one box per passenger who requires a seat)
               ...List.generate(_numPassengers, (i) {
-                if (!_passengerRequiresSeat(i)) return const SizedBox.shrink();
+                if (!_passengerRequiresSeat(i)) {
+                  return const SizedBox.shrink();
+                }
 
                 final options = _seatOptionsForPassenger(i);
 
@@ -574,11 +626,12 @@ class _BookingPageState extends State<BookingPage> {
                         _seatNumbers[i] = v;
                       });
                     },
-                    validator: (v) => (v == null || v.isEmpty) ? 'Select seat' : null,
                   ),
                 );
               }),
+
               const SizedBox(height: 12),
+
               Text(
                 'Estimated Fare: ₱${_computedFare.toStringAsFixed(2)}',
                 style: const TextStyle(
@@ -586,30 +639,40 @@ class _BookingPageState extends State<BookingPage> {
                   fontSize: 16,
                 ),
               ),
+
               const Divider(height: 30),
+
+              // -----------------------------------------------------
+              // ------------------ PAYMENT METHOD -------------------
+              // -----------------------------------------------------
               const Text(
                 'Payment Method',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
+
               RadioListTile(
                 title: const Text('GCash'),
                 value: 'GCash',
                 groupValue: _payment,
                 onChanged: (v) => setState(() => _payment = v!),
               ),
+
               RadioListTile(
                 title: const Text('PayPal'),
                 value: 'PayPal',
                 groupValue: _payment,
                 onChanged: (v) => setState(() => _payment = v!),
               ),
+
               RadioListTile(
                 title: const Text('Mastercard'),
                 value: 'Mastercard',
                 groupValue: _payment,
                 onChanged: (v) => setState(() => _payment = v!),
               ),
+
               const SizedBox(height: 16),
+
               ElevatedButton.icon(
                 onPressed: _loading ? null : _bookFlight,
                 icon: _loading
