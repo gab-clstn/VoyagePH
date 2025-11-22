@@ -75,7 +75,7 @@ class _HomePageState extends State<HomePage>
     {"name": "El Nido", "image": "assets/images/el_nido.jpg"},
     {"name": "Davao", "image": "assets/images/davao.jpg"},
     {"name": "Coron", "image": "assets/images/coron.webp"},
-    {"name": "Clark", "image": "assets/images/clark.avif"},
+    {"name": "Clark", "image": "assets/images/clark.png"},
     {"name": "Cauayan", "image": "assets/images/cauayan.jpg"},
     {"name": "Camiguin", "image": "assets/images/camiguin.jpg"},
     {"name": "Calbayog", "image": "assets/images/calbayog.jpg"},
@@ -236,7 +236,6 @@ class _HomePageState extends State<HomePage>
                       children: [
                         _tripTypeButton('Round Trip'),
                         _tripTypeButton('One Way'),
-                        _tripTypeButton('Multi-City'),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -284,7 +283,7 @@ class _HomePageState extends State<HomePage>
                           child: _dateField(
                             'Return',
                             returnDate,
-                            tripType == 'One Way' || tripType == 'Multi-City'
+                            tripType == 'One Way'
                                 ? null
                                 : () => _selectDate(context, false),
                             isError: returnError && tripType == 'Round Trip',
