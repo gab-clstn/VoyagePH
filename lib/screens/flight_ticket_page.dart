@@ -102,7 +102,8 @@ class FlightTicketPage extends StatelessWidget {
     final notes = bookingData['notes'] ?? '';
     final paymentMethod = bookingData['paymentMethod'] ?? '';
     final bookingType = bookingData['bookingType'] ?? 'Single Flight';
-
+    final departureTime = bookingData['departureTime'] ?? '';
+    final arrivalTime = bookingData['arrivalTime'] ?? '';
     final passengers = (bookingData['passengers'] as List<dynamic>? ?? [])
         .map(
           (p) => {
@@ -151,10 +152,12 @@ class FlightTicketPage extends StatelessWidget {
                       destination: destination,
                       travelDate: travelDate,
                       seatClass: seatClass,
-                      totalFare: formattedFare, // 🔥 formatted value passed
+                      totalFare: formattedFare,
                       paymentMethod: paymentMethod,
                       notes: notes,
                       bookingType: bookingType,
+                      departureTime: departureTime,
+                      arrivalTime: arrivalTime,
                     ),
                   );
                 },
@@ -194,6 +197,8 @@ class FlightTicketPage extends StatelessWidget {
     required String paymentMethod,
     required String notes,
     required String bookingType,
+    required String departureTime,
+    required String arrivalTime,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -304,6 +309,8 @@ class FlightTicketPage extends StatelessWidget {
                   _ticketRow('Infant Seating', passenger['infantSeating']),
                 _ticketRow('Seat', passenger['seatNumber']),
                 _ticketRow('Date', travelDate),
+                _ticketRow('Departure Time', departureTime),
+                _ticketRow('Arrival Time', arrivalTime),
                 _ticketRow('Class', seatClass),
 
                 // 🔥 Formatted fare here
