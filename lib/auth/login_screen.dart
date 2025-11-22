@@ -66,7 +66,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         } else {
-          // Normal user: just pop login
           if (mounted) Navigator.of(context).pop();
         }
       }
@@ -75,8 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-
-    
   }
 
   Future<void> _signInWithGoogle() async {
@@ -101,8 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
 
       await userCredential.user?.reload();
       final user = FirebaseAuth.instance.currentUser;
@@ -267,7 +265,10 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -287,109 +288,222 @@ class _LoginScreenState extends State<LoginScreen> {
     const Color primaryBlue = Color(0xFF4B7B9A);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6F8),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              Text(
-                "Log In",
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                ),
+      body: Stack(
+        children: [
+          // Gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4B7B9A),
+                  Color(0xFF2C5F7A),
+                  Color(0xFF1A3D52),
+                ],
               ),
-              const SizedBox(height: 20),
-              const Center(
-                child: Icon(
-                  Icons.person_pin,
-                  size: 90,
-                  color: primaryBlue,
+            ),
+          ),
+
+          // GIF overlay
+          Positioned.fill(
+            child: Image.asset('lib/assets/earth2.gif', fit: BoxFit.cover),
+          ),
+
+          // Main content
+          SafeArea(
+            child: Column(
+              children: [
+                // Back button
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _styledTextField(
-                      label: "Email",
-                      obscureText: false,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
-                      onSaved: (v) => _email = v ?? '',
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28.0,
+                      vertical: 24,
                     ),
-                    _styledTextField(
-                      label: "Password",
-                      obscureText: _obscure,
-                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
-                      onSaved: (v) => _password = v ?? '',
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 14)),
-                      ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _loading ? null : _forgotPassword,
-                        child: Text("Forgot Password?", style: GoogleFonts.poppins(color: primaryBlue, fontWeight: FontWeight.w500)),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _loading ? null : _signInWithGoogle,
-                        icon: Image.asset('assets/images/google.png', height: 24),
-                        label: Text("Sign in with Google", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: const BorderSide(color: Color(0xFF4B7B9A), width: 1.8),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: Card(
+                          elevation: 8,
+                          shadowColor: Colors.black26,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Log In",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                const Center(
+                                  child: Icon(
+                                    Icons.person_pin,
+                                    size: 90,
+                                    color: primaryBlue,
+                                  ),
+                                ),
+                                const SizedBox(height: 30),
+                                Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    children: [
+                                      _styledTextField(
+                                        label: "Email",
+                                        obscureText: false,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator: (v) =>
+                                            (v == null || !v.contains('@'))
+                                            ? 'Enter valid email'
+                                            : null,
+                                        onSaved: (v) => _email = v ?? '',
+                                      ),
+                                      _styledTextField(
+                                        label: "Password",
+                                        obscureText: _obscure,
+                                        validator: (v) =>
+                                            (v == null || v.length < 6)
+                                            ? 'Min 6 characters'
+                                            : null,
+                                        onSaved: (v) => _password = v ?? '',
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscure
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _obscure = !_obscure,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      if (_error != null)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                          child: Text(
+                                            _error!,
+                                            style: const TextStyle(
+                                              color: Colors.red,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _loading
+                                              ? null
+                                              : _forgotPassword,
+                                          child: Text(
+                                            "Forgot Password?",
+                                            style: GoogleFonts.poppins(
+                                              color: primaryBlue,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _loading
+                                              ? null
+                                              : _signInWithGoogle,
+                                          icon: Image.asset(
+                                            'assets/images/google.png',
+                                            height: 24,
+                                          ),
+                                          label: Text(
+                                            "Sign in with Google",
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                            side: const BorderSide(
+                                              color: Color(0xFF4B7B9A),
+                                              width: 1.8,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _loading
+                                          ? const CircularProgressIndicator()
+                                          : SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                onPressed: _submit,
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: primaryBlue,
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          14,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 16,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  "Log In",
+                                                  style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    _loading
-                        ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _submit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryBlue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              child: Text("Log In", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
-                            ),
-                          ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
