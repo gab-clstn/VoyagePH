@@ -90,7 +90,7 @@ class FlightTicketPage extends StatelessWidget {
         )
         .toList();
 
-    // 🌟 FIXED: SAFE ROUND TRIP CHECK
+    // ROUND TRIP CHECK
     final returnFlightData =
         (bookingData['returnFlight'] as Map<dynamic, dynamic>?);
 
@@ -123,15 +123,21 @@ class FlightTicketPage extends StatelessWidget {
           }
         : null;
 
-    // FARE SAFE
-    final totalFare =
-        (bookingData['fareTotal'] ??
-                bookingData['totalFare'] ??
-                bookingData['finalTotal'] ??
-                0)
-            .toDouble();
+    // FARE PER LEG SAFE
+    final fareOutbound =
+        (bookingData['fareOutbound'] ?? bookingData['fare'] ?? 0).toDouble();
+    final fareReturn = isRoundTrip
+        ? (bookingData['fareReturn'] ??
+                  fareOutbound) // fallback if no return fare stored
+              .toDouble()
+        : 0;
 
-    final formattedFare = NumberFormat('#,##0.00').format(totalFare);
+    // TOTAL FARE FOR ALL PASSENGERS
+    final totalFare = (fareOutbound + fareReturn) * passengers.length;
+    final formattedTotalFare = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    ).format(totalFare);
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -150,7 +156,6 @@ class FlightTicketPage extends StatelessWidget {
         centerTitle: true,
       ),
 
-      // BODY
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -163,7 +168,7 @@ class FlightTicketPage extends StatelessWidget {
                     passengers: passengers,
                     flight: outboundFlight,
                     title: "Outbound Flight",
-                    totalFare: formattedFare,
+                    farePerLeg: fareOutbound,
                   ),
 
                   // RETURN TICKET
@@ -172,8 +177,47 @@ class FlightTicketPage extends StatelessWidget {
                       passengers: passengers,
                       flight: returnFlight,
                       title: "Return Flight",
-                      totalFare: formattedFare,
+                      farePerLeg: fareReturn,
                     ),
+
+                  // TOTAL FARE DISPLAY
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Fare',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          Text(
+                            formattedTotalFare,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -187,10 +231,10 @@ class FlightTicketPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              icon: const Icon(Icons.cancel_outlined),
+              icon: const Icon(Icons.cancel_outlined, color: Colors.white),
               label: const Text(
                 'Cancel Booking',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 18, color: Colors.white),
               ),
               onPressed: () => _requestCancelBooking(context),
             ),
@@ -206,8 +250,13 @@ class FlightTicketPage extends StatelessWidget {
     required List<Map<String, dynamic>> passengers,
     required Map<String, dynamic> flight,
     required String title,
-    required String totalFare,
+    required double farePerLeg,
   }) {
+    final formattedFarePerLeg = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    ).format(farePerLeg);
+
     return [
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -217,8 +266,11 @@ class FlightTicketPage extends StatelessWidget {
         ),
       ),
       ...passengers.map(
-        (p) =>
-            _singleTicket(passenger: p, flight: flight, totalFare: totalFare),
+        (p) => _singleTicket(
+          passenger: p,
+          flight: flight,
+          farePerLeg: formattedFarePerLeg,
+        ),
       ),
       const SizedBox(height: 20),
     ];
@@ -227,7 +279,7 @@ class FlightTicketPage extends StatelessWidget {
   Widget _singleTicket({
     required Map<String, dynamic> passenger,
     required Map<String, dynamic> flight,
-    required String totalFare,
+    required String farePerLeg,
   }) {
     final travelDate = (flight['travelDate'] ?? '').toString();
     final formattedDate = travelDate.contains("T")
@@ -330,7 +382,7 @@ class FlightTicketPage extends StatelessWidget {
                 _ticketRow("Departure Time", flight['departureTime']),
                 _ticketRow("Arrival Time", flight['arrivalTime']),
                 _ticketRow("Class", flight['seatClass']),
-                _ticketRow("Fare", "₱$totalFare"),
+                _ticketRow("Fare", farePerLeg),
               ],
             ),
           ),
