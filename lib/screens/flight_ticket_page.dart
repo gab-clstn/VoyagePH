@@ -1,3 +1,4 @@
+// lib/screens/flight_ticket_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -90,10 +91,16 @@ class FlightTicketPage extends StatelessWidget {
         )
         .toList();
 
-    // 🌟 FIXED: SAFE ROUND TRIP CHECK
+    // SAFE NUM PASSENGERS (fallback)
+    final storedNumPassengers =
+        (bookingData['numPassengers'] as num?)?.toInt() ?? passengers.length;
+    final int numPassengers = storedNumPassengers > 0
+        ? storedNumPassengers
+        : passengers.length;
+
+    // ROUND TRIP CHECK
     final returnFlightData =
         (bookingData['returnFlight'] as Map<dynamic, dynamic>?);
-
     final bool isRoundTrip =
         returnFlightData != null && returnFlightData.isNotEmpty;
 
@@ -107,6 +114,14 @@ class FlightTicketPage extends StatelessWidget {
       'departureTime': bookingData['departureTime'] ?? '',
       'arrivalTime': bookingData['arrivalTime'] ?? '',
       'seatClass': bookingData['seatClass'] ?? '',
+      // optional price if present on booking
+      'price':
+          (bookingData['fareOutbound'] as num?)?.toDouble() ??
+          (bookingData['outboundPrice'] as num?)?.toDouble() ??
+          (bookingData['flight'] is Map
+              ? (bookingData['flight']['price'] as num?)?.toDouble()
+              : null) ??
+          null,
     };
 
     // RETURN SAFE MAP
@@ -116,22 +131,103 @@ class FlightTicketPage extends StatelessWidget {
             'flightNumber': returnFlightData['flightNumber'] ?? '',
             'departure': returnFlightData['departure'] ?? '',
             'destination': returnFlightData['destination'] ?? '',
-            'travelDate': returnFlightData['travelDate'] ?? '',
+            'travelDate': bookingData['returnDate'] ?? '',
             'departureTime': returnFlightData['departureTime'] ?? '',
             'arrivalTime': returnFlightData['arrivalTime'] ?? '',
             'seatClass': bookingData['seatClass'] ?? '',
+            'price':
+                (bookingData['fareReturn'] as num?)?.toDouble() ??
+                (bookingData['returnPrice'] as num?)?.toDouble() ??
+                (returnFlightData is Map
+                    ? (returnFlightData['price'] as num?)?.toDouble()
+                    : null) ??
+                null,
           }
         : null;
 
-    // FARE SAFE
-    final totalFare =
-        (bookingData['fareTotal'] ??
-                bookingData['totalFare'] ??
-                bookingData['finalTotal'] ??
-                0)
-            .toDouble();
+    // -------------------- FARE LOGIC (robust) --------------------
+    //
+    // We try several sources (explicit fareOutbound/fareReturn,
+    // flight/returnFlight maps, or finally the top-level 'fare'
+    // which historically has been the total booking price).
+    //
+    // If only the total booking fare is stored, we compute a per-passenger
+    // value and split evenly across legs for round trips.
+    //
 
-    final formattedFare = NumberFormat('#,##0.00').format(totalFare);
+    final double? explicitOutbound =
+        (bookingData['fareOutbound'] as num?)?.toDouble() ??
+        (bookingData['outboundPrice'] as num?)?.toDouble() ??
+        (outboundFlight['price'] as double?);
+
+    final double? explicitReturn =
+        (bookingData['fareReturn'] as num?)?.toDouble() ??
+        (bookingData['returnPrice'] as num?)?.toDouble() ??
+        (returnFlight != null ? returnFlight['price'] as double? : null);
+
+    final double totalFareStored = (bookingData['fare'] as num? ?? 0)
+        .toDouble(); // often equals whole booking total
+
+    double fareOutbound = explicitOutbound ?? 0.0;
+    double fareReturn = explicitReturn ?? 0.0;
+
+    // If both legs present explicitly, do nothing extra.
+    if (fareOutbound > 0 && (!isRoundTrip || fareReturn > 0)) {
+      // good — explicit values already set
+    } else {
+      // we must infer from totalFareStored (if present)
+      if (totalFareStored > 0 && numPassengers > 0) {
+        // totalFareStored is likely the entire booking price (all passengers).
+        // compute per-passenger booking total:
+        final perPassengerTotal = totalFareStored / numPassengers;
+
+        if (isRoundTrip) {
+          // If both explicit are zero -> split per passenger total evenly across legs
+          if (fareOutbound == 0 && fareReturn == 0) {
+            fareOutbound = perPassengerTotal / 2;
+            fareReturn = perPassengerTotal / 2;
+          } else if (fareOutbound > 0 && fareReturn == 0) {
+            // use explicit outbound, compute return as remainder of perPassengerTotal
+            fareReturn = (perPassengerTotal - fareOutbound).clamp(
+              0.0,
+              perPassengerTotal,
+            );
+            // if computed zero (e.g., perPassengerTotal == fareOutbound), keep return 0
+          } else if (fareReturn > 0 && fareOutbound == 0) {
+            fareOutbound = (perPassengerTotal - fareReturn).clamp(
+              0.0,
+              perPassengerTotal,
+            );
+          }
+        } else {
+          // One-way: if outbound missing, use perPassengerTotal
+          if (fareOutbound == 0) {
+            fareOutbound = perPassengerTotal;
+          }
+          // ensure fareReturn is zero for one-way
+          fareReturn = 0.0;
+        }
+      } else {
+        // No total stored -> as last resort use any price embedded in returned maps or 0
+        fareOutbound = fareOutbound > 0 ? fareOutbound : 0.0;
+        fareReturn = isRoundTrip ? (fareReturn > 0 ? fareReturn : 0.0) : 0.0;
+      }
+    }
+
+    // Final safety: ensure values are non-negative
+    fareOutbound = (fareOutbound < 0) ? 0.0 : fareOutbound;
+    fareReturn = (fareReturn < 0) ? 0.0 : fareReturn;
+
+    // Compute total fare for display (sum per passenger * number passengers)
+    final totalFare =
+        (fareOutbound + (isRoundTrip ? fareReturn : 0)) * passengers.length;
+
+    final formattedTotalFare = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    ).format(totalFare);
+
+    // ---------------------------------------------------------
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -149,8 +245,6 @@ class FlightTicketPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-
-      // BODY
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -162,8 +256,8 @@ class FlightTicketPage extends StatelessWidget {
                   ..._generateTickets(
                     passengers: passengers,
                     flight: outboundFlight,
-                    title: "Outbound Flight",
-                    totalFare: formattedFare,
+                    title: 'Outbound Flight',
+                    farePerLeg: fareOutbound,
                   ),
 
                   // RETURN TICKET
@@ -171,9 +265,48 @@ class FlightTicketPage extends StatelessWidget {
                     ..._generateTickets(
                       passengers: passengers,
                       flight: returnFlight,
-                      title: "Return Flight",
-                      totalFare: formattedFare,
+                      title: 'Return Flight',
+                      farePerLeg: fareReturn,
                     ),
+
+                  // TOTAL FARE DISPLAY
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Fare',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          Text(
+                            formattedTotalFare,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -187,10 +320,10 @@ class FlightTicketPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              icon: const Icon(Icons.cancel_outlined),
+              icon: const Icon(Icons.cancel_outlined, color: Colors.white),
               label: const Text(
                 'Cancel Booking',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 18, color: Colors.white),
               ),
               onPressed: () => _requestCancelBooking(context),
             ),
@@ -206,8 +339,13 @@ class FlightTicketPage extends StatelessWidget {
     required List<Map<String, dynamic>> passengers,
     required Map<String, dynamic> flight,
     required String title,
-    required String totalFare,
+    required double farePerLeg,
   }) {
+    final formattedFarePerLeg = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    ).format(farePerLeg);
+
     return [
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -217,8 +355,11 @@ class FlightTicketPage extends StatelessWidget {
         ),
       ),
       ...passengers.map(
-        (p) =>
-            _singleTicket(passenger: p, flight: flight, totalFare: totalFare),
+        (p) => _singleTicket(
+          passenger: p,
+          flight: flight,
+          farePerLeg: formattedFarePerLeg,
+        ),
       ),
       const SizedBox(height: 20),
     ];
@@ -227,11 +368,11 @@ class FlightTicketPage extends StatelessWidget {
   Widget _singleTicket({
     required Map<String, dynamic> passenger,
     required Map<String, dynamic> flight,
-    required String totalFare,
+    required String farePerLeg,
   }) {
     final travelDate = (flight['travelDate'] ?? '').toString();
-    final formattedDate = travelDate.contains("T")
-        ? travelDate.split("T")[0]
+    final formattedDate = travelDate.contains('T')
+        ? travelDate.split('T')[0]
         : travelDate;
 
     return Container(
@@ -260,55 +401,58 @@ class FlightTicketPage extends StatelessWidget {
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Airline
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      flight['airline'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                // LEFT COLUMN
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        flight['airline'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      flight['flightNumber'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        flight['flightNumber'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Icon(
-                  Icons.airplanemode_active,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      flight['departure'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+
+                // CENTER ICON (always perfectly centered)
+                Icon(Icons.airplanemode_active, color: Colors.white, size: 32),
+
+                // RIGHT COLUMN
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        flight['departure'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      flight['destination'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        flight['destination'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -321,16 +465,19 @@ class FlightTicketPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _ticketRow("Passenger", passenger['name']),
-                _ticketRow("Age Group", passenger['ageGroup']),
-                if (passenger['ageGroup'] == "Infant (0-2)")
-                  _ticketRow("Infant Seating", passenger['infantSeating']),
-                _ticketRow("Seat", passenger['seatNumber']),
+                _ticketRow("Passenger", passenger['name'] ?? ''),
+                _ticketRow("Age Group", passenger['ageGroup'] ?? ''),
+                if ((passenger['ageGroup'] ?? '') == "Infant (0-2)")
+                  _ticketRow(
+                    "Infant Seating",
+                    passenger['infantSeating'] ?? '',
+                  ),
+                _ticketRow("Seat", passenger['seatNumber'] ?? ''),
                 _ticketRow("Date", formattedDate),
-                _ticketRow("Departure Time", flight['departureTime']),
-                _ticketRow("Arrival Time", flight['arrivalTime']),
-                _ticketRow("Class", flight['seatClass']),
-                _ticketRow("Fare", "₱$totalFare"),
+                _ticketRow("Departure Time", flight['departureTime'] ?? ''),
+                _ticketRow("Arrival Time", flight['arrivalTime'] ?? ''),
+                _ticketRow("Class", flight['seatClass'] ?? ''),
+                _ticketRow("Fare", farePerLeg),
               ],
             ),
           ),
