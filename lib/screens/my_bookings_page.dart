@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'flight_ticket_page.dart'; // <-- new page
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -18,7 +19,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     final user = FirebaseAuth.instance.currentUser;
     final data = doc.data() as Map<String, dynamic>;
 
-    // Ask user to confirm cancellation
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -38,7 +38,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     if (confirm != true) return;
 
     try {
-      // Check if a cancel request already exists for this booking
       final existing = await FirebaseFirestore.instance
           .collection('cancel_requests')
           .where('bookingId', isEqualTo: doc.id)
@@ -53,7 +52,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         return;
       }
 
-      // Add cancellation request to a new collection
       await FirebaseFirestore.instance.collection('cancel_requests').add({
         'bookingId': doc.id,
         'userId': user?.uid,
@@ -64,31 +62,12 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         'destination': data['destination'] ?? '',
         'travelDate': data['travelDate'] ?? '',
         'requestedAt': FieldValue.serverTimestamp(),
-        'status': 'Pending', // Admin will approve/reject
+        'status': 'Pending',
       });
 
-      // Update local state to highlight this booking
       setState(() {
         _justCancelledBookingId = doc.id;
       });
-
-      // Notify all admins
-      final admins = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'admin')
-          .get();
-
-      for (var admin in admins.docs) {
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'userId': admin.id,
-          'title': 'New Cancellation Request',
-          'message':
-              'User ${user?.email ?? ''} requested to cancel booking ${data['flightNumber'] ?? ''}.',
-          'bookingId': doc.id,
-          'read': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cancellation request submitted')),
@@ -165,7 +144,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   final flightName =
                       '${data['airline'] ?? ''} ${data['flightNumber'] ?? ''}';
 
-                  // Build passenger names and seat display.
                   final passengerList = (data['passengers'] as List<dynamic>?) ?? [];
                   final passengers = passengerList.isNotEmpty
                       ? passengerList
@@ -174,48 +152,35 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                           .join(', ')
                       : (data['passengerNames'] as String?) ?? '';
 
-                  // Seats: prefer per-passenger seatNumber when available, otherwise fall back to top-level seatNumber.
                   String seats;
                   if (passengerList.isNotEmpty) {
                     final perSeats = passengerList.map((p) {
                       final s = (p as Map<String, dynamic>)['seatNumber'];
                       return s != null && s.toString().isNotEmpty ? s.toString() : null;
                     }).toList();
-
                     final hasAnyPerSeat = perSeats.any((s) => s != null);
                     if (hasAnyPerSeat) {
                       final fallback = data['seatNumber']?.toString() ?? 'N/A';
                       seats = perSeats.map((s) => s ?? fallback).join(', ');
                     } else {
-                      seats = data['seatNumber'] != null && data['seatNumber'].toString().isNotEmpty
-                          ? data['seatNumber'].toString()
-                          : 'N/A';
+                      seats = data['seatNumber']?.toString() ?? 'N/A';
                     }
                   } else {
-                    seats = data['seatNumber'] != null && data['seatNumber'].toString().isNotEmpty
-                        ? data['seatNumber'].toString()
-                        : 'N/A';
+                    seats = data['seatNumber']?.toString() ?? 'N/A';
                   }
 
                   final status = (data['status'] ?? '').toString().toLowerCase();
-
-                  // Check if a cancel request exists for this booking
                   final cancelRequested = cancelDocs.any(
                       (c) => (c.data() as Map<String, dynamic>)['bookingId'] ==
                           docs[index].id &&
                           (c.data() as Map<String, dynamic>)['status'] ==
                               'Pending');
-
-                  // Only add red border if this is the flight just cancelled
                   final highlightRed = _justCancelledBookingId == docs[index].id;
 
-                  // subtitle styles: base and bold label
                   final baseStyle = GoogleFonts.poppins(
                     textStyle: const TextStyle(fontSize: 14, color: Colors.black87),
                   );
                   final labelStyle = baseStyle.copyWith(fontWeight: FontWeight.bold);
-
-                  // map status to colors: confirmed -> green, rejected/cancelled -> red, pending -> orange
                   final statusColor = status == 'confirmed'
                       ? Colors.green
                       : (status == 'rejected' || status == 'cancelled')
@@ -239,8 +204,19 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                     elevation: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     shadowColor: Colors.black26,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FlightTicketPage(
+                              bookingData: data,
+                              bookingId: docs[index].id,
+                            ),
+                          ),
+                        );
+                      },
                       child: ListTile(
                         leading: const Icon(Icons.airplane_ticket,
                             color: Colors.blue, size: 32),
@@ -264,8 +240,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                             const TextSpan(text: '\n'),
                             TextSpan(text: 'Date: ', style: labelStyle),
                             TextSpan(
-                                text: data['travelDate']?.toString().split('T')[0] ??
-                                    'N/A'),
+                                text: data['travelDate']?.toString().split('T')[0] ?? 'N/A'),
                             const TextSpan(text: '\n'),
                             TextSpan(text: 'Status: ', style: labelStyle),
                             TextSpan(
@@ -273,9 +248,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                 style: baseStyle.copyWith(color: statusColor)),
                             const TextSpan(text: '\n'),
                             TextSpan(text: 'Total: ', style: labelStyle),
-                            TextSpan(
-                                text:
-                                    '₱${(data['fareTotal'] ?? 0).toString()}'),
+                            TextSpan(text: '₱${(data['fareTotal'] ?? 0).toString()}'),
                           ]),
                         ),
                         trailing: (status == 'pending' || status == 'confirmed')

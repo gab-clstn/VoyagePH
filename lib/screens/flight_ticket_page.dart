@@ -1,0 +1,268 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class FlightTicketPage extends StatelessWidget {
+  final Map<String, dynamic> bookingData;
+  final String bookingId;
+
+  const FlightTicketPage({
+    required this.bookingData,
+    required this.bookingId,
+    super.key,
+  });
+
+  Future<void> _requestCancelBooking(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Cancel Booking'),
+        content: const Text('Are you sure you want to cancel this booking?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final existing = await FirebaseFirestore.instance
+          .collection('cancel_requests')
+          .where('bookingId', isEqualTo: bookingId)
+          .where('status', isEqualTo: 'Pending')
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('You already requested to cancel this booking')),
+        );
+        return;
+      }
+
+      await FirebaseFirestore.instance.collection('cancel_requests').add({
+        'bookingId': bookingId,
+        'userId': user?.uid,
+        'userEmail': user?.email ?? '',
+        'flightId': bookingData['flightId'] ?? '',
+        'flightNumber': bookingData['flightNumber'] ?? '',
+        'departure': bookingData['departure'] ?? '',
+        'destination': bookingData['destination'] ?? '',
+        'travelDate': bookingData['travelDate'] ?? '',
+        'requestedAt': FieldValue.serverTimestamp(),
+        'status': 'Pending',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cancellation request submitted')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final flightNumber = bookingData['flightNumber'] ?? '';
+    final airline = bookingData['airline'] ?? '';
+    final departure = bookingData['departure'] ?? '';
+    final destination = bookingData['destination'] ?? '';
+    final travelDate = bookingData['travelDate']?.toString().split('T')[0] ?? '';
+    final seatClass = bookingData['seatClass'] ?? '';
+    final fareTotal = bookingData['fareTotal'] ?? 0;
+
+    final passengers = (bookingData['passengers'] as List<dynamic>?)
+            ?.map((p) => p['name'] ?? '')
+            .join(', ') ??
+        bookingData['passengerNames'] ??
+        '';
+
+    final seats = (bookingData['passengers'] as List<dynamic>?)
+            ?.map((p) => p['seatNumber']?.toString() ?? '')
+            .join(', ') ??
+        bookingData['seatNumber']?.toString() ??
+        'N/A';
+
+    return Scaffold(
+      backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 11, 66, 121),
+        title: Text(
+          'Flight Ticket',
+          style: GoogleFonts.poppins(
+            textStyle: const TextStyle(
+                fontWeight: FontWeight.w600, color: Colors.white, fontSize: 20),
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Ticket Container
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black26.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Top Section: Airline Info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[800],
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              airline,
+                              style: GoogleFonts.poppins(
+                                  textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              flightNumber,
+                              style: GoogleFonts.poppins(
+                                  textStyle: const TextStyle(
+                                      color: Colors.white70, fontSize: 14)),
+                            ),
+                          ],
+                        ),
+                        const Icon(
+                          Icons.airplanemode_active,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              departure,
+                              style: GoogleFonts.poppins(
+                                  textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              destination,
+                              style: GoogleFonts.poppins(
+                                  textStyle: const TextStyle(
+                                      color: Colors.white70, fontSize: 14)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Perforated Line
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Divider(
+                        color: Colors.grey,
+                        thickness: 1,
+                        height: 1,
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(
+                            50,
+                            (index) => Container(
+                                  width: 4,
+                                  height: 1,
+                                  color: index % 2 == 0
+                                      ? Colors.white
+                                      : Colors.grey[200],
+                                )),
+                      )
+                    ],
+                  ),
+                  // Bottom Section: Details
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _ticketRow('Passenger(s)', passengers),
+                        _ticketRow('Seat(s)', seats),
+                        _ticketRow('Date', travelDate),
+                        _ticketRow('Class', seatClass),
+                        _ticketRow('Total Fare', '₱$fareTotal'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text(
+                'Cancel Booking',
+                style: TextStyle(fontSize: 18),
+              ),
+              onPressed: () => _requestCancelBooking(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ticketRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500, color: Colors.grey[700]),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -16,7 +16,11 @@ class _BookingPageState extends State<BookingPage> {
   final _formKey = GlobalKey<FormState>();
   final _notes = TextEditingController();
 
+  // Booking info
+  String _bookingType = 'Single Flight';
   DateTime? _travelDate;
+  DateTime? _returnDate;
+
   int _numPassengers = 1;
   String _payment = 'GCash';
   String _seatClass = 'Economy';
@@ -46,7 +50,6 @@ class _BookingPageState extends State<BookingPage> {
   @override
   void initState() {
     super.initState();
-    // baseFare from flight if available
     _baseFare = (widget.flight?['price'] ?? 2000).toDouble();
     _initializePassengerControllers();
     _fetchAvailableSeats();
@@ -58,7 +61,6 @@ class _BookingPageState extends State<BookingPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _userEmailController.text = user.email ?? '';
-      // If first passenger email is empty, set it
       if (_emailControllers.isNotEmpty && _emailControllers[0].text.isEmpty) {
         _emailControllers[0].text = user.email ?? '';
       }
@@ -78,7 +80,6 @@ class _BookingPageState extends State<BookingPage> {
       _numPassengers,
       (_) => TextEditingController(),
     );
-    // prefill first passenger email if user logged in will happen in _prefillUserEmail
   }
 
   void _updatePassengerControllers(int newCount) {
@@ -110,8 +111,10 @@ class _BookingPageState extends State<BookingPage> {
         multiplier = 2.0;
         break;
     }
-
     double fare = _baseFare * multiplier * _numPassengers;
+
+    // For round-trip: multiply by 2
+    if (_bookingType == 'Round Trip') fare *= 2;
 
     setState(() {
       _computedFare = fare < 2000 ? 2000 : fare;
@@ -119,12 +122,10 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _fetchAvailableSeats() async {
-    // If there's no flightId in flight data, treat all seats as available
     final flightId = widget.flight?['flightId'];
     if (flightId == null) {
-      final allSeats = _seatMap[_seatClass] ?? [];
       setState(() {
-        _availableSeats = allSeats;
+        _availableSeats = _seatMap[_seatClass] ?? [];
         _seatNumber = null;
       });
       return;
@@ -152,7 +153,6 @@ class _BookingPageState extends State<BookingPage> {
     if (!_formKey.currentState!.validate() ||
         _travelDate == null ||
         _seatNumber == null) {
-      // provide feedback
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete required fields')),
       );
@@ -164,7 +164,6 @@ class _BookingPageState extends State<BookingPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
-      // collect passenger data
       List<Map<String, String>> passengers = List.generate(_numPassengers, (i) {
         return {
           'name': _nameControllers[i].text,
@@ -173,11 +172,11 @@ class _BookingPageState extends State<BookingPage> {
         };
       });
 
-      // Build booking document
       final bookingDoc = {
         'userId': user?.uid,
         'userEmail': _userEmailController.text,
         'flightId': widget.flight?['flightId'],
+        'bookingType': _bookingType,
         'airline': widget.flight?['airline'],
         'flightNumber': widget.flight?['flightNumber'],
         'departure': widget.flight?['departure'],
@@ -186,7 +185,8 @@ class _BookingPageState extends State<BookingPage> {
         'arrivalTime': widget.flight?['arrivalTime'],
         'duration': widget.flight?['duration'],
         'pricePerGuest': widget.flight?['price'],
-        'travelDate': _travelDate!.toIso8601String(),
+        'travelDate': _travelDate?.toIso8601String(),
+        'returnDate': _returnDate?.toIso8601String(),
         'numPassengers': _numPassengers,
         'passengers': passengers,
         'notes': _notes.text,
@@ -195,17 +195,14 @@ class _BookingPageState extends State<BookingPage> {
         'fareTotal': _computedFare,
         'paymentMethod': _payment,
         'status': 'Pending',
-        'emailSent': false, // cloud function can update this
+        'emailSent': false,
         'timestamp': FieldValue.serverTimestamp(),
       };
 
-      // Save booking
-      final docRef =
-          await FirebaseFirestore.instance.collection('bookings').add(bookingDoc);
+      final docRef = await FirebaseFirestore.instance
+          .collection('bookings')
+          .add(bookingDoc);
 
-      // Optional: update seat allocation immediately to avoid race conditions
-      // (keep simple here; production should use transactions)
-      // Show confirmation screen
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -217,9 +214,9 @@ class _BookingPageState extends State<BookingPage> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error booking flight: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error booking flight: $e')));
     } finally {
       setState(() => _loading = false);
     }
@@ -260,7 +257,10 @@ class _BookingPageState extends State<BookingPage> {
         decoration: InputDecoration(
           labelText: labelText,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -298,7 +298,9 @@ class _BookingPageState extends State<BookingPage> {
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           border: InputBorder.none,
         ),
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e.toString()))).toList(),
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e.toString())))
+            .toList(),
         onChanged: onChanged,
         validator: validator,
       ),
@@ -311,7 +313,9 @@ class _BookingPageState extends State<BookingPage> {
       appBar: AppBar(
         title: Text(
           'BOOK FLIGHT: ${widget.flight?['airline'] ?? ''} (${widget.flight?['flightNumber'] ?? ''})',
-          style: GoogleFonts.poppins(textStyle: const TextStyle(color: Colors.white)),
+          style: GoogleFonts.poppins(
+            textStyle: const TextStyle(color: Colors.white),
+          ),
         ),
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
       ),
@@ -326,7 +330,22 @@ class _BookingPageState extends State<BookingPage> {
                 controller: _userEmailController,
                 labelText: 'Your Email (login)',
                 readOnly: true,
-                validator: (v) => (v == null || v.isEmpty) ? 'Login required' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Login required' : null,
+              ),
+
+              // Booking type
+              _styledDropdown<String>(
+                label: 'Booking Type',
+                value: _bookingType,
+                items: ['Single Flight', 'Round Trip'],
+                onChanged: (v) {
+                  setState(() {
+                    _bookingType = v!;
+                    _returnDate = null;
+                    _updateFare();
+                  });
+                },
               ),
 
               const SizedBox(height: 8),
@@ -337,24 +356,33 @@ class _BookingPageState extends State<BookingPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _numPassengers > 1 ? 'Passenger ${i + 1}' : 'Passenger Information',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      _numPassengers > 1
+                          ? 'Passenger ${i + 1}'
+                          : 'Passenger Information',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     _styledTextField(
                       controller: _nameControllers[i],
                       labelText: 'Full Name',
-                      validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
                     ),
                     _styledTextField(
                       controller: _contactControllers[i],
                       labelText: 'Contact Number',
                       keyboardType: TextInputType.phone,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
                     ),
                     _styledTextField(
                       controller: _emailControllers[i],
                       labelText: 'Email (passenger)',
-                      validator: (v) => (v != null && v.contains('@')) ? null : 'Enter valid email',
+                      validator: (v) => (v != null && v.contains('@'))
+                          ? null
+                          : 'Enter valid email',
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 12),
@@ -362,7 +390,7 @@ class _BookingPageState extends State<BookingPage> {
                 );
               }),
 
-              // travel date
+              // Travel date
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
@@ -382,16 +410,47 @@ class _BookingPageState extends State<BookingPage> {
                 },
               ),
 
+              // Return date for round trip
+              if (_bookingType == 'Round Trip')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    _returnDate == null
+                        ? 'Select Return Date'
+                        : 'Return Date: ${_returnDate!.toLocal().toIso8601String().split('T')[0]}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate:
+                          _travelDate?.add(const Duration(days: 1)) ??
+                          DateTime.now().add(const Duration(days: 1)),
+                      firstDate: _travelDate ?? DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) setState(() => _returnDate = picked);
+                  },
+                ),
+
               // passengers count
               Row(
                 children: [
-                  const Text('Passengers', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Passengers',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(width: 16),
                   SizedBox(
                     width: 80,
                     child: DropdownButton<int>(
                       value: _numPassengers,
-                      items: [1, 2, 3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Text('$e'))).toList(),
+                      items: [1, 2, 3, 4, 5]
+                          .map(
+                            (e) =>
+                                DropdownMenuItem(value: e, child: Text('$e')),
+                          )
+                          .toList(),
                       onChanged: (v) {
                         setState(() {
                           _numPassengers = v!;
@@ -405,11 +464,19 @@ class _BookingPageState extends State<BookingPage> {
               ),
 
               const Divider(height: 24),
-              const Text('Seating Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Seating Information',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               _styledDropdown<String>(
                 label: 'Seat Class',
                 value: _seatClass,
-                items: ['Economy', 'Premium Economy', 'Business', 'First Class'],
+                items: [
+                  'Economy',
+                  'Premium Economy',
+                  'Business',
+                  'First Class',
+                ],
                 onChanged: (v) async {
                   setState(() {
                     _seatClass = v!;
@@ -428,10 +495,19 @@ class _BookingPageState extends State<BookingPage> {
               ),
 
               const SizedBox(height: 12),
-              Text('Estimated Fare: ₱${_computedFare.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'Estimated Fare: ₱${_computedFare.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
 
               const Divider(height: 30),
-              const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Payment Method',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               RadioListTile(
                 title: const Text('GCash'),
                 value: 'GCash',
@@ -446,16 +522,23 @@ class _BookingPageState extends State<BookingPage> {
               ),
 
               const SizedBox(height: 12),
-              _styledTextField(controller: _notes, labelText: 'Notes (optional)'),
+              _styledTextField(
+                controller: _notes,
+                labelText: 'Notes (optional)',
+              ),
               const SizedBox(height: 16),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _loading ? null : _bookFlight,
-                  icon: _loading ? const CircularProgressIndicator(color: Colors.white) : const Icon(Icons.flight_takeoff),
+                  icon: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Icon(Icons.flight_takeoff),
                   label: Text(_loading ? 'Booking...' : 'Confirm Booking'),
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
             ],
@@ -470,7 +553,11 @@ class _BookingPageState extends State<BookingPage> {
 class BookingConfirmationPage extends StatelessWidget {
   final String bookingId;
   final Map<String, dynamic> bookingData;
-  const BookingConfirmationPage({super.key, required this.bookingId, required this.bookingData});
+  const BookingConfirmationPage({
+    super.key,
+    required this.bookingId,
+    required this.bookingData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,15 +571,32 @@ class BookingConfirmationPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.check_circle_outline, size: 72, color: Colors.green),
+            const Icon(
+              Icons.check_circle_outline,
+              size: 72,
+              color: Colors.green,
+            ),
             const SizedBox(height: 12),
-            Text('Booking ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Booking ID: $bookingId',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text('Flight: ${bookingData['airline']} ${bookingData['flightNumber']}'),
-            Text('From: ${bookingData['departure']} → To: ${bookingData['destination']}'),
-            Text('Date: ${bookingData['travelDate'].toString().split('T')[0]}'),
+            Text(
+              'Flight: ${bookingData['airline']} ${bookingData['flightNumber']}',
+            ),
+            Text(
+              'From: ${bookingData['departure']} → To: ${bookingData['destination']}',
+            ),
+            Text(
+              'Travel Date: ${bookingData['travelDate']?.toString().split('T')[0]}',
+            ),
+            if (bookingData['bookingType'] == 'Round Trip')
+              Text(
+                'Return Date: ${bookingData['returnDate']?.toString().split('T')[0]}',
+              ),
             Text('Passengers: ${bookingData['numPassengers']}'),
-            Text('Seat(s): ${bookingData['seatNumber']}'),
+            Text('Seat(s): ${bookingData['seatNumber'] ?? '-'}'),
             const SizedBox(height: 12),
             Text('Total Paid: ₱${(bookingData['fareTotal'] ?? 0).toString()}'),
             const SizedBox(height: 20),

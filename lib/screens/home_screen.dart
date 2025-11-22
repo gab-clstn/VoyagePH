@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'flights_page.dart';
-import 'booking_page.dart';
 import 'profile_page.dart';
 import 'my_bookings_page.dart';
 import 'home_page.dart';
@@ -22,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = [
     HomePage(),
     const FlightsPage(),
-    const BookingPage(),
     const MyBookingsPage(),
     const ProfilePage(),
   ];
@@ -47,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
+    // Check if user has bookings for My Bookings tab
     if (index == 2 && !_hasBooking) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -56,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // If coming back from BookingPage after a new booking, update _hasBooking
+    // If navigating to My Bookings, refresh booking status
     if (index == 2) {
       await _checkUserBooking();
     }
@@ -72,26 +71,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          if (index == 2) return; // <-- Prevent clicking Booking
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onDestinationSelected: _onItemTapped,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.flight), label: 'Flights'),
-          NavigationDestination(
-            icon: Icon(
-              Icons.book_online,
-              color: Colors.grey,
-            ), // visually disabled
-            label: 'Booking',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bookmarks),
-            label: 'My Bookings',
-          ),
+          NavigationDestination(icon: Icon(Icons.bookmarks), label: 'My Bookings'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
