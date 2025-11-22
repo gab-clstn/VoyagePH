@@ -239,34 +239,73 @@ class _FlightsPageState extends State<FlightsPage>
               ),
             ),
             bottom: hasReturn
-                ? TabBar(
-                    indicatorColor: const Color.fromARGB(255, 78, 127, 186),
-                    tabs: [
-                      Tab(
-                        child: Column(
-                          children: [
-                            const Text('Outbound'),
-                            if (widget.departureDate != null)
-                              Text(
-                                dateFormat.format(widget.departureDate!),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                          ],
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(60),
+                    child: Container(
+                      color: const Color.fromARGB(255, 11, 66, 121),
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TabBar(
+                        labelColor: Colors.black, // text color selected
+                        unselectedLabelColor:
+                            Colors.white, // text color not selected
+                        dividerColor: Colors.transparent,
+
+                        indicator: BoxDecoration(
+                          color: const Color.fromARGB(
+                            255,
+                            181,
+                            228,
+                            235,
+                          ), // light blue
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      Tab(
-                        child: Column(
-                          children: [
-                            const Text('Return'),
-                            if (widget.returnDate != null)
-                              Text(
-                                dateFormat.format(widget.returnDate!),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                          ],
+
+                        indicatorSize: TabBarIndicatorSize.tab,
+
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
                         ),
+
+                        labelPadding: const EdgeInsets.symmetric(vertical: 4),
+
+                        tabs: [
+                          SizedBox(
+                            height: 40, // IMPORTANT = fixes layout
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Outbound',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                if (widget.departureDate != null)
+                                  Text(
+                                    dateFormat.format(widget.departureDate!),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 40,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Return',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                if (widget.returnDate != null)
+                                  Text(
+                                    dateFormat.format(widget.returnDate!),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   )
                 : null,
           ),
@@ -533,7 +572,9 @@ class _FlightsPageState extends State<FlightsPage>
             ),
           ),
 
-          if (isReturnCard && selectedReturn != null)
+          if (isReturnCard &&
+              selectedReturn != null &&
+              selectedReturn!['flightNumber'] == flight['flightNumber'])
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: ElevatedButton(
