@@ -401,55 +401,58 @@ class FlightTicketPage extends StatelessWidget {
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Airline
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      flight['airline'] ?? '',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                // LEFT COLUMN
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        flight['airline'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      flight['flightNumber'] ?? '',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        flight['flightNumber'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Icon(
-                  Icons.airplanemode_active,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      flight['departure'] ?? '',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+
+                // CENTER ICON (always perfectly centered)
+                Icon(Icons.airplanemode_active, color: Colors.white, size: 32),
+
+                // RIGHT COLUMN
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        flight['departure'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      flight['destination'] ?? '',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        flight['destination'],
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
