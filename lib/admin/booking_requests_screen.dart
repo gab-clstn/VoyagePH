@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class BookingRequestsScreen extends StatefulWidget {
   const BookingRequestsScreen({super.key});
@@ -14,6 +16,35 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
   final bookingsRef = FirebaseFirestore.instance.collection('bookings');
   final historyRef = FirebaseFirestore.instance.collection('approval_history');
 
+  // ============================================
+  // SEND EMAIL TO USER VIA BACKEND API
+  // ============================================
+  Future<void> sendEmailNotification({
+    required String toEmail,
+    required String subject,
+    required String message,
+  }) async {
+    const apiUrl =
+        "https://yourdomain.com/send_gmail.php"; // CHANGE THIS TO YOUR BACKEND
+
+    try {
+      await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "to": toEmail,
+          "subject": subject,
+          "message": message,
+        }),
+      );
+    } catch (e) {
+      debugPrint("Email send error: $e");
+    }
+  }
+
+  // ============================================
+  // PROCESS BOOKING + EMAIL NOTIFICATION
+  // ============================================
   Future<void> _processBooking({
     required DocumentSnapshot bookingDoc,
     required String newStatus,
@@ -22,6 +53,9 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final adminEmail = user?.email ?? 'admin';
     final adminUid = user?.uid ?? 'local-admin';
+
+    final data = bookingDoc.data() as Map<String, dynamic>;
+    final userEmail = data['userEmail'] ?? '';
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final ref = bookingsRef.doc(bookingDoc.id);
@@ -33,7 +67,6 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
         if (reason != null) 'rejectionReason': reason,
       });
 
-      final data = bookingDoc.data() as Map<String, dynamic>;
       final history = {
         'bookingId': bookingDoc.id,
         'userId': data['userId'] ?? '',
@@ -53,8 +86,30 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
       };
       tx.set(historyRef.doc(), history);
     });
+
+    // ============================================
+    // SEND EMAIL AFTER APPROVE / REJECT
+    // ============================================
+    if (newStatus == "Confirmed") {
+      await sendEmailNotification(
+        toEmail: userEmail,
+        subject: "Your booking has been APPROVED",
+        message:
+            "Your booking for flight ${data['flightNumber']} has been approved.",
+      );
+    } else if (newStatus == "Rejected") {
+      await sendEmailNotification(
+        toEmail: userEmail,
+        subject: "Your booking has been REJECTED",
+        message:
+            "Your booking for flight ${data['flightNumber']} was rejected.\nReason: $reason",
+      );
+    }
   }
 
+  // -----------------------------------------------------
+  // UI BELOW (unchanged except calls to _processBooking)
+  // -----------------------------------------------------
   Widget _statusChip(String status) {
     Color c;
     switch (status.toLowerCase()) {

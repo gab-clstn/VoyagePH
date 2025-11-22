@@ -11,7 +11,7 @@ import 'change_password_screen.dart';
 import 'change_email_screen.dart';
 import 'change_name_screen.dart';
 import 'add_admin_screen.dart';
-import 'booking_history_screen.dart'; // <-- import your history screen
+import 'admin_booking_history_tab.dart'; // <-- import your history screen
 
 class AdminDrawer extends StatelessWidget {
   const AdminDrawer({super.key});
@@ -80,7 +80,7 @@ class AdminDrawer extends StatelessWidget {
               leading: const Icon(Icons.history),
               title: Text('History', style: GoogleFonts.poppins()),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
+                MaterialPageRoute(builder: (_) => const BookingHistoryTab()),
               ),
             ),
 

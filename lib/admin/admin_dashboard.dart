@@ -4,7 +4,8 @@ import 'admin_drawer.dart';
 import 'booking_requests_screen.dart';
 import 'cancelled_requests_screen.dart';
 import 'flight_management.dart';
-import 'admin_booking_history_tab.dart'; // <-- import the history screen
+import 'admin_booking_history_tab.dart';
+import 'user_management.dart'; // <-- import the user management screen
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -16,6 +17,17 @@ class AdminDashboard extends StatelessWidget {
       appBar: AppBar(
         title: Text('Admin Dashboard', style: GoogleFonts.poppins()),
         backgroundColor: primary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.manage_accounts),
+            tooltip: 'User Management',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const AdminDrawer(),
       body: Padding(
@@ -58,7 +70,7 @@ class AdminDashboard extends StatelessWidget {
                   _tile(
                     context,
                     Icons.history,
-                    'Booking History', // <-- new tile
+                    'Booking History',
                     () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const BookingHistoryTab()),
                     ),

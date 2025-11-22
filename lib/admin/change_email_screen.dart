@@ -26,10 +26,12 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
       final cred = EmailAuthProvider.credential(
           email: user.email!, password: _currentPassword);
       await user.reauthenticateWithCredential(cred);
-    
 
-      // Update Firestore user document
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      // Update Firebase Auth email
+      
+
+      // Update Firestore admins collection
+      await FirebaseFirestore.instance.collection('admins').doc(user.uid).update({
         'email': _newEmail,
       });
 
@@ -50,23 +52,26 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFF4B7B9A);
     return Scaffold(
-      appBar: AppBar(title: Text('Change Email', style: GoogleFonts.poppins()), backgroundColor: primary),
+      appBar: AppBar(
+          title: Text('Change Email', style: GoogleFonts.poppins()),
+          backgroundColor: primary),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-             
               TextFormField(
                 decoration: const InputDecoration(labelText: 'New Email'),
-                validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
+                validator: (v) =>
+                    (v == null || !v.contains('@')) ? 'Enter valid email' : null,
                 onSaved: (v) => _newEmail = v ?? '',
               ),
-               TextFormField(
+              TextFormField(
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Enter password' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter password' : null,
                 onSaved: (v) => _currentPassword = v ?? '',
               ),
               const SizedBox(height: 20),

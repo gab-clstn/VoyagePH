@@ -121,7 +121,7 @@ class ProfilePage extends StatelessWidget {
                   Text(user?.email ?? "No email", style: GoogleFonts.poppins(fontSize: 14)),
                 ]),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 16)
+             
             ]),
           ),
           const SizedBox(height: 25),
@@ -247,43 +247,68 @@ class ContactUsScreen extends StatelessWidget {
 // About Us screen
 class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-  final Color primary = const Color.fromARGB(255, 11, 66, 121);
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('About VoyagePH', style: GoogleFonts.poppins()),
-      backgroundColor: primary,
-    ),
-    body: Padding(
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        child: Text(
-          'VoyagePH is a Flutter-based mobile app designed to help users search, '
-          'book, and manage flights across the Philippines. It provides real-time '
-          'flight information, fare details, and an intuitive booking interface. '
-          'Users can view their bookings, request cancellations, and receive notifications '
-          'all within the app, making flight management simple and convenient.',
-          style: GoogleFonts.poppins(fontSize: 15, height: 1.5),
-        ),
-      ),
-    ),
-  );
-}
 
-}
-
-// Terms screen (simple)
-class TermsScreen extends StatelessWidget {
-  const TermsScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final Color primary = const Color.fromARGB(255, 11, 66, 121);
     return Scaffold(
-      appBar: AppBar(title: Text('Terms & Conditions', style: GoogleFonts.poppins()), backgroundColor: primary),
+      appBar: AppBar(
+        title: Text('About VoyagePH', style: GoogleFonts.poppins()),
+        backgroundColor: primary,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(child: Text('Terms and conditions placeholder. Replace with actual content.', style: GoogleFonts.poppins())),
+        child: SingleChildScrollView(
+          child: Text(
+            'VoyagePH helps you find and book flights across the Philippines. '
+            'Our mission is to make travel easier and more accessible for everyone. '
+            'You can browse flights, compare prices, and book directly from our app.',
+            style: GoogleFonts.poppins(fontSize: 15),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Terms & Conditions screen
+class TermsScreen extends StatelessWidget {
+  const TermsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color primary = const Color.fromARGB(255, 11, 66, 121);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Terms & Conditions', style: GoogleFonts.poppins()),
+        backgroundColor: primary,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Text(
+            'Terms and Conditions\n\n'
+            'Welcome to VoyagePH! By accessing or using our services, you agree to the following:\n\n'
+            '• Acceptance of Terms: By using this app, you agree to be bound by these Terms and Conditions.\n\n'
+            '• Use of Service:\n'
+            '  - Use the app only for lawful purposes.\n'
+            '  - Provide accurate and current information.\n\n'
+            '• Account Responsibility:\n'
+            '  - Keep your account credentials confidential.\n'
+            '  - All activity under your account is your responsibility.\n\n'
+            '• Privacy: Your personal information is handled in accordance with our Privacy Policy.\n\n'
+            '• Intellectual Property: All content and features are property of VoyagePH. Do not copy or distribute without permission.\n\n'
+            '• Prohibited Conduct:\n'
+            '  - No illegal activities.\n'
+            '  - Do not attempt unauthorized access.\n\n'
+            '• Termination: Accounts may be suspended or terminated for violating these terms.\n\n'
+            '• Limitation of Liability: The app is provided "as is" and VoyagePH is not liable for damages resulting from use.\n\n'
+            '• Changes to Terms: Updated terms will be effective upon posting.\n\n'
+            '• Governing Law: These terms are governed by the laws of [Your Country/State].',
+            style: GoogleFonts.poppins(fontSize: 14, height: 1.5),
+          ),
+        ),
       ),
     );
   }
@@ -371,37 +396,65 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   String? _message;
 
   
-  Future<void> _deleteNow() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.email == null) {
-      setState(() => _message = 'No signed in user.');
-      return;
-    }
-    final pw = _pwCtrl.text;
-    if (pw.isEmpty) {
-      setState(() => _message = 'Enter your password to confirm deletion.');
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _message = null;
-    });
-    try {
-      final cred = EmailAuthProvider.credential(email: user.email!, password: pw);
-      await user.reauthenticateWithCredential(cred);
-      await user.delete();
-      if (mounted) {
-        setState(() => _message = 'Account deleted.');
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } on FirebaseAuthException catch (e) {
-      setState(() => _message = e.message);
-    } catch (_) {
-      setState(() => _message = 'Failed to delete account.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+ Future<void> _deleteNow() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null || user.email == null) {
+    setState(() => _message = 'No signed in user.');
+    return;
   }
+
+  final pw = _pwCtrl.text;
+  if (pw.isEmpty) {
+    setState(() => _message = 'Enter your password to confirm deletion.');
+    return;
+  }
+
+  // Show confirmation dialog
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete Account'),
+      content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('No'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Yes'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return; // User cancelled
+
+  setState(() {
+    _loading = true;
+    _message = null;
+  });
+
+  try {
+    final cred = EmailAuthProvider.credential(email: user.email!, password: pw);
+    await user.reauthenticateWithCredential(cred);
+    await user.delete();
+
+    if (mounted) {
+      setState(() => _message = 'Account deleted.');
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  } on FirebaseAuthException catch (e) {
+    setState(() => _message = e.message);
+  } catch (_) {
+    Navigator.pushReplacementNamed(context, '/login');
+  } finally {
+    if (mounted) setState(() => _loading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

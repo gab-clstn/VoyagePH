@@ -1,3 +1,5 @@
+// add_admin_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +14,7 @@ class AddAdminScreen extends StatefulWidget {
 
 class _AddAdminScreenState extends State<AddAdminScreen> {
   final _formKey = GlobalKey<FormState>();
+
   String _firstName = '';
   String _lastName = '';
   String _email = '';
@@ -19,6 +22,9 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   String _retypePassword = '';
   bool _loading = false;
 
+  // -------------------------------------------------------
+  // CREATE ADMIN IN FIREBASE AUTH + SAVE TO FIRESTORE
+  // -------------------------------------------------------
   Future<void> _addAdmin() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
@@ -33,29 +39,33 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
     setState(() => _loading = true);
 
     try {
-      // Create Firebase Auth account
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Create Firebase Auth user
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email,
         password: _password,
       );
 
-      // Save admin info in 'admin' collection
-      await FirebaseFirestore.instance.collection('admin').doc(userCredential.user!.uid).set({
+      final uid = userCredential.user!.uid;
+
+      // SAVE ADMIN INFO TO COLLECTION: "admins"
+      await FirebaseFirestore.instance.collection('admins').doc(uid).set({
         'firstName': _firstName,
         'lastName': _lastName,
         'email': _email,
         'role': 'admin',
         'createdAt': FieldValue.serverTimestamp(),
+        'uid': uid,
       });
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Admin added")));
-        Navigator.of(context).pop();
+            .showSnackBar(const SnackBar(content: Text("Admin successfully added")));
+        Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message ?? 'Error')));
+          .showSnackBar(SnackBar(content: Text(e.message ?? "Auth error")));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,9 +74,10 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFF4B7B9A);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Admin', style: GoogleFonts.poppins()),
+        title: Text("Add Admin", style: GoogleFonts.poppins()),
         backgroundColor: primary,
       ),
       body: Padding(
@@ -77,30 +88,38 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
             child: Column(
               children: [
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'First Name'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Enter first name' : null,
+                  decoration: const InputDecoration(labelText: "First Name"),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? "Enter first name" : null,
                   onSaved: (v) => _firstName = v ?? '',
                 ),
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Last Name'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Enter last name' : null,
+                  decoration: const InputDecoration(labelText: "Last Name"),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? "Enter last name" : null,
                   onSaved: (v) => _lastName = v ?? '',
                 ),
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
+                  decoration: const InputDecoration(labelText: "Email"),
+                  validator: (v) => (v == null || !v.contains("@"))
+                      ? "Enter valid email"
+                      : null,
                   onSaved: (v) => _email = v ?? '',
                 ),
                 TextFormField(
+                  decoration: const InputDecoration(labelText: "Password"),
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  validator: (v) => (v == null || v.length < 6) ? 'Min 6 chars' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? "Minimum 6 characters"
+                      : null,
                   onSaved: (v) => _password = v ?? '',
                 ),
                 TextFormField(
+                  decoration:
+                      const InputDecoration(labelText: "Retype Password"),
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Retype Password'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Retype password' : null,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? "Retype password" : null,
                   onSaved: (v) => _retypePassword = v ?? '',
                 ),
                 const SizedBox(height: 20),
@@ -108,8 +127,14 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
                     ? const CircularProgressIndicator()
                     : ElevatedButton(
                         onPressed: _addAdmin,
-                        style: ElevatedButton.styleFrom(backgroundColor: primary),
-                        child: Text('Add Admin', style: GoogleFonts.poppins()),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 40),
+                        ),
+                        child: Text("Add Admin",
+                            style: GoogleFonts.poppins(
+                                color: Colors.white, fontSize: 16)),
                       ),
               ],
             ),

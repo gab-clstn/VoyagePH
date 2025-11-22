@@ -25,17 +25,22 @@ class _ChangeNameScreenState extends State<ChangeNameScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser!;
       final cred = EmailAuthProvider.credential(
-          email: user.email!, password: _password);
+        email: user.email!,
+        password: _password,
+      );
       await user.reauthenticateWithCredential(cred);
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      await FirebaseFirestore.instance
+          .collection('admins')
+          .doc(user.uid)
+          .update({
         'firstName': _firstName,
         'lastName': _lastName,
       });
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Name updated")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Name updated")));
         Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
@@ -50,28 +55,32 @@ class _ChangeNameScreenState extends State<ChangeNameScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFF4B7B9A);
     return Scaffold(
-      appBar: AppBar(title: Text('Change Name', style: GoogleFonts.poppins()), backgroundColor: primary),
+      appBar: AppBar(
+          title: Text('Change Name', style: GoogleFonts.poppins()),
+          backgroundColor: primary),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              
               TextFormField(
                 decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Enter first name' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter first name' : null,
                 onSaved: (v) => _firstName = v ?? '',
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Enter last name' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter last name' : null,
                 onSaved: (v) => _lastName = v ?? '',
               ),
               TextFormField(
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Enter password' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter password' : null,
                 onSaved: (v) => _password = v ?? '',
               ),
               const SizedBox(height: 20),

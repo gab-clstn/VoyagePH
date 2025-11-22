@@ -9,7 +9,7 @@ class BookingHistoryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final historyRef = FirebaseFirestore.instance.collection('approval_history');
-    final primary = const Color(0xFF4B7B9A); // AppBar color
+    final primary = const Color(0xFF4B7B9A);
 
     // Status color coding
     Color getStatusColor(String status) {
@@ -18,12 +18,30 @@ class BookingHistoryTab extends StatelessWidget {
         case 'accepted':
           return Colors.green;
         case 'rejected':
+          return Colors.red;
         case 'cancelled':
           return Colors.redAccent;
         case 'cancel_requested':
           return Colors.purple;
         default:
           return Colors.orange;
+      }
+    }
+
+    // Readable status label
+    String getReadableStatus(String status) {
+      switch (status.toLowerCase()) {
+        case 'accepted':
+        case 'confirmed':
+          return "Booking Confirmed";
+        case 'rejected':
+          return "Booking Rejected";
+        case 'cancel_requested':
+          return "Cancellation Requested";
+        case 'cancelled':
+          return "Booking Cancelled";
+        default:
+          return "Updated Status";
       }
     }
 
@@ -49,6 +67,7 @@ class BookingHistoryTab extends StatelessWidget {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
+
               final processedAt = data['processedAt'] != null
                   ? (data['processedAt'] as Timestamp)
                       .toDate()
@@ -56,17 +75,20 @@ class BookingHistoryTab extends StatelessWidget {
                       .toString()
                       .split(' ')[0]
                   : '-';
+
               final status = (data['action'] ?? '-').toString();
+              final readableLabel = getReadableStatus(status);
 
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header Row
                       Row(
                         children: [
                           Expanded(
@@ -90,12 +112,28 @@ class BookingHistoryTab extends StatelessWidget {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 6),
+
+                      // Readable Label
+                      Text(
+                        readableLabel,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          color: getStatusColor(status),
+                          fontSize: 13,
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // Details
                       Text('Route: ${data['from']} → ${data['to']}',
                           style: GoogleFonts.poppins(fontSize: 12)),
                       Text('Processed By: ${data['processedBy'] ?? '-'}',
                           style: GoogleFonts.poppins(fontSize: 12)),
-                      Text('Date: $processedAt', style: GoogleFonts.poppins(fontSize: 12)),
+                      Text('Date: $processedAt',
+                          style: GoogleFonts.poppins(fontSize: 12)),
                     ],
                   ),
                 ),

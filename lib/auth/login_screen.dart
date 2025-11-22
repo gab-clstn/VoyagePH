@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../admin/admin_config.dart';
 import '../admin/admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -21,86 +21,15 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _obscure = true;
 
-  Future<void> _sendPasswordReset(String email) async {
-    if (email.trim().isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter an email')));
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset sent to $email')));
-    } on FirebaseAuthException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Failed to send reset')));
-    }
-  }
-
-  Future<void> _showForgotPasswordDialog() async {
-    final ctrl = TextEditingController(text: _email);
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        // Dialog with fixed size (not resizable)
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: 320,
-              maxWidth: 420,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Forgot Password', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: ctrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text('Cancel', style: GoogleFonts.poppins()),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          final e = ctrl.text.trim();
-                          Navigator.of(ctx).pop();
-                          _sendPasswordReset(e);
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B7B9A)),
-                        child: Text('Send', style: GoogleFonts.poppins(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  final GoogleSignIn _googleSignIn = kIsWeb 
+  final GoogleSignIn _googleSignIn = kIsWeb
       ? GoogleSignIn(
-          clientId: '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
+          clientId:
+              '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
           scopes: ['email', 'profile'],
         )
       : GoogleSignIn(
-          serverClientId: '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
+          serverClientId:
+              '542232190217-5q8oic8c0la6283qk076ovpdhn78k4jf.apps.googleusercontent.com',
         );
 
   Future<void> _submit() async {
@@ -112,35 +41,141 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
     });
 
-    // DEV: check hardcoded admin first (no Firebase needed)
-    if (_email.trim() == hardcodedAdminEmail && _password == hardcodedAdminPassword) {
-      if (mounted) {
-        setState(() => _loading = false);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AdminDashboard()),
-        );
-      }
-      return;
-    }
-
     try {
+      // Firebase email/password login
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
 
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null && adminEmails.contains(user.email)) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
-          );
+
+      if (user != null) {
+        // Check if user exists in admins collection
+        final adminSnapshot = await FirebaseFirestore.instance
+            .collection('admins')
+            .where('email', isEqualTo: user.email)
+            .limit(1)
+            .get();
+
+        if (adminSnapshot.docs.isNotEmpty) {
+          // Admin found
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const AdminDashboard()),
+            );
+          }
+        } else {
+          // Normal user: just pop login
+          if (mounted) Navigator.of(context).pop();
         }
-      } else {
-        if (mounted) Navigator.of(context).pop();
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Login failed');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+
+    
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      await userCredential.user?.reload();
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        // Check admins collection
+        final adminSnapshot = await FirebaseFirestore.instance
+            .collection('admins')
+            .where('email', isEqualTo: user.email)
+            .limit(1)
+            .get();
+
+        if (adminSnapshot.docs.isNotEmpty) {
+          // Admin found
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const AdminDashboard()),
+            );
+          }
+        } else {
+          // Normal user: pop login
+          if (mounted) Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      setState(() => _error = "Sign in failed. Check internet or try again.");
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendPasswordResetEmail(String email) async {
+    setState(() => _loading = true);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Password reset email sent to $email",
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Failed to send reset email";
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = "No account found with this email";
+          break;
+        case 'invalid-email':
+          errorMessage = "Invalid email address";
+          break;
+        case 'network-request-failed':
+          errorMessage = "Network error. Please check your connection";
+          break;
+        default:
+          errorMessage = e.message ?? errorMessage;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage, style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -148,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _forgotPassword() async {
     final emailController = TextEditingController(text: _email);
-    
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -190,19 +225,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ElevatedButton(
             onPressed: () async {
               final email = emailController.text.trim();
-              if (email.isEmpty || !email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "Please enter a valid email address",
-                      style: GoogleFonts.poppins(),
-                    ),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-                return;
-              }
-              
               Navigator.of(context).pop(); // Close dialog
               await _sendPasswordResetEmail(email);
             },
@@ -220,122 +242,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _sendPasswordResetEmail(String email) async {
-    setState(() => _loading = true);
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Password reset email sent to $email",
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = "Failed to send reset email";
-      
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = "No account found with this email";
-          break;
-        case 'invalid-email':
-          errorMessage = "Invalid email address";
-          break;
-        case 'network-request-failed':
-          errorMessage = "Network error. Please check your connection";
-          break;
-        default:
-          errorMessage = e.message ?? errorMessage;
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              errorMessage,
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "An unexpected error occurred",
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        if (mounted) setState(() => _loading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-
-      await userCredential.user?.reload();
-      final user = FirebaseAuth.instance.currentUser;
-
-      debugPrint("✅ Google Sign-In Success!");
-      debugPrint("Name: ${user?.displayName}");
-      debugPrint("Email: ${user?.email}");
-      debugPrint("Photo URL: ${user?.photoURL}"); 
-
-      if (mounted) {
-        if (adminEmails.contains(user?.email)) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
-          );
-        } else {
-          Navigator.of(context).pop(); 
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-      setState(() => _error = "Google sign-in failed: ${e.message}");
-    } catch (e) {
-      debugPrint('Unexpected Google Sign-In Error: $e');
-      setState(() => _error = "Sign in failed. Check internet or try again.");
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  // Reusable styled TextField with shadow & floating label
   Widget _styledTextField({
     required String label,
     required bool obscureText,
@@ -361,10 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -417,7 +320,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 30),
-
               Form(
                 key: _formKey,
                 child: Column(
@@ -426,22 +328,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: "Email",
                       obscureText: false,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || !v.contains('@'))
-                          ? 'Enter valid email'
-                          : null,
+                      validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
                       onSaved: (v) => _email = v ?? '',
                     ),
                     _styledTextField(
                       label: "Password",
                       obscureText: _obscure,
-                      validator: (v) => (v == null || v.length < 6)
-                          ? 'Min 6 characters'
-                          : null,
+                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
                       onSaved: (v) => _password = v ?? '',
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure ? Icons.visibility_off : Icons.visibility,
-                        ),
+                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
@@ -449,55 +345,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red, fontSize: 14),
-                        ),
+                        child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 14)),
                       ),
-
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _loading ? null : _forgotPassword,
-                        child: Text(
-                          "Forgot Password?",
-                          style: GoogleFonts.poppins(
-                            color: primaryBlue,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        child: Text("Forgot Password?", style: GoogleFonts.poppins(color: primaryBlue, fontWeight: FontWeight.w500)),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _loading ? null : _signInWithGoogle,
                         icon: Image.asset('assets/images/google.png', height: 24),
-                        label: Text(
-                          "Sign in with Google",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
+                        label: Text("Sign in with Google", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          side: const BorderSide(
-                            color: Color(0xFF4B7B9A),
-                            width: 1.8,
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          side: const BorderSide(color: Color(0xFF4B7B9A), width: 1.8),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
                     _loading
                         ? const CircularProgressIndicator()
                         : SizedBox(
@@ -507,20 +378,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryBlue,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
-                              child: Text(
-                                "Log In",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
+                              child: Text("Log In", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
                             ),
                           ),
                   ],
