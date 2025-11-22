@@ -89,16 +89,6 @@ class _HomePageState extends State<HomePage>
   late AnimationController _zoomController;
   late Animation<double> _zoomAnimation;
 
-  String getRandomTime() {
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final minutes = (random % 12) * 5; // 0,5,10,15... up to 55
-    final hour = 6 + (random % 12); // 6AM to 6PM
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = (hour % 12 == 0) ? 12 : hour % 12;
-
-    return '$displayHour:${minutes.toString().padLeft(2, '0')} $period';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -133,19 +123,33 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _selectDate(BuildContext context, bool isDeparture) async {
+    final DateTime now = DateTime.now();
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isDeparture
-          ? (departureDate ?? DateTime.now())
-          : (returnDate ?? DateTime.now().add(const Duration(days: 1))),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+          ? (departureDate ?? now)
+          : (returnDate ??
+                (departureDate != null
+                    ? departureDate!.add(const Duration(days: 1))
+                    : now.add(const Duration(days: 1)))),
+      firstDate: isDeparture
+          ? now
+          : (departureDate != null
+                ? departureDate!.add(
+                    const Duration(days: 1),
+                  ) // ⛔ Block same-day return
+                : now.add(const Duration(days: 1))),
+      lastDate: now.add(const Duration(days: 365)),
     );
+
     if (picked != null) {
       setState(() {
         if (isDeparture) {
           departureDate = picked;
-          if (returnDate != null && returnDate!.isBefore(departureDate!)) {
+
+          // Auto-fix return date if invalid
+          if (returnDate != null && !returnDate!.isAfter(departureDate!)) {
             returnDate = departureDate!.add(const Duration(days: 1));
           }
         } else {
@@ -279,14 +283,17 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(
-                          child: _dateField(
-                            'Return',
-                            returnDate,
-                            tripType == 'One Way'
-                                ? null
-                                : () => _selectDate(context, false),
-                            isError: returnError && tripType == 'Round Trip',
+                        Visibility(
+                          visible: tripType == 'Round Trip',
+                          child: Expanded(
+                            child: _dateField(
+                              'Return',
+                              returnDate,
+                              tripType == 'One Way'
+                                  ? null
+                                  : () => _selectDate(context, false),
+                              isError: returnError && tripType == 'Round Trip',
+                            ),
                           ),
                         ),
                       ],
@@ -315,6 +322,9 @@ class _HomePageState extends State<HomePage>
                                   from: fromLocation!,
                                   to: toLocation!,
                                   departureDate: departureDate!,
+                                  returnDate: tripType == 'Round Trip'
+                                      ? returnDate
+                                      : null,
                                 ),
                               ),
                             );
@@ -628,13 +638,15 @@ class _HomePageState extends State<HomePage>
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => FlightsPage(
-                                              from:
-                                                  fromLocation ??
-                                                  'Manila', // use selected or default
-                                              to: name, // the clicked place
+                                              from: fromLocation ?? 'Manila',
+                                              to: name,
                                               departureDate:
                                                   departureDate ??
                                                   DateTime.now(),
+                                              returnDate:
+                                                  tripType == 'Round Trip'
+                                                  ? returnDate
+                                                  : null,
                                             ),
                                           ),
                                         );

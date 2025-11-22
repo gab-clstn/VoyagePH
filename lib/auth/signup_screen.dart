@@ -11,10 +11,17 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _firstName = '', _lastName = '', _email = '', _password = '', _confirm = '';
-  bool _loading = false;
+
+  String _firstName = '';
+  String _lastName = '';
+  String _email = '';
+  String _password = '';
+  String _confirm = '';
   String? _error;
-  bool _obscure1 = true, _obscure2 = true;
+
+  bool _obscure1 = true;
+  bool _obscure2 = true;
+  bool _loading = false;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -31,7 +38,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      // Step 1: Create the user in Firebase Auth
+      // Create account
       final result = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
@@ -40,17 +47,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final user = result.user;
 
       if (user != null) {
-        final displayName = '${_firstName.trim()} ${_lastName.trim()}'.trim();
-
+        final displayName = "${_firstName.trim()} ${_lastName.trim()}".trim();
         if (displayName.isNotEmpty) {
           await user.updateDisplayName(displayName);
         }
 
-        // Step 2: Send verification email
+        // Send verification email
         await user.sendEmailVerification();
 
-        // Step 3: Show verification dialog
-        if (mounted) await _showVerificationDialog(user);
+        if (mounted) _showVerificationDialog(user);
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
@@ -59,65 +64,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // Email Verification Dialog
   Future<void> _showVerificationDialog(User user) async {
-    if (!mounted) return;
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Verify your email'),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(ctx).pop(),
-              ),
-            ],
-          ),
-          content: const Text(
-            'A verification email has been sent to your email address. '
-            'Please check your inbox and verify your account.',
+          title: const Text("Verify Your Email"),
+          content: Text(
+            "We sent a verification link to:\n\n${user.email}\n\n"
+            "Please check your inbox or spam folder.",
           ),
           actions: [
             TextButton(
+              child: const Text("Resend"),
               onPressed: () async {
-                try {
-                  await user.sendEmailVerification();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Verification email resent.')),
-                    );
-                  }
-                } catch (_) {}
-              },
-              child: const Text('Resend'),
-            ),
-            TextButton(
-              onPressed: () async {
-                // Step 4: Check verification status
-                await user.reload();
-                final u = FirebaseAuth.instance.currentUser;
-                if (u != null && u.emailVerified) {
-                  // Email verified, account is now active
-                  if (mounted) {
-                    Navigator.of(ctx).pop(); // Close dialog
-                    Navigator.of(context).pop(); // Close signup screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Account created successfully!')),
-                    );
-                  }
-                } else {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Email not verified yet.')),
-                    );
-                  }
+                await user.sendEmailVerification();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Verification email re-sent.")),
+                  );
                 }
               },
-              child: const Text('I have verified'),
+            ),
+            TextButton(
+              child: const Text("I Verified"),
+              onPressed: () async {
+                await user.reload();
+                final refreshed = FirebaseAuth.instance.currentUser;
+
+                if (refreshed != null && refreshed.emailVerified) {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Account created successfully!")),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Email not verified yet.")),
+                  );
+                }
+              },
             ),
           ],
         );
@@ -125,6 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  // Reusable styled text field
   Widget _styledTextField({
     required String label,
     required bool obscureText,
@@ -132,7 +121,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     void Function(String?)? onSaved,
     Widget? suffixIcon,
     TextInputType? keyboardType,
-    String? initialValue,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -148,7 +136,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ],
       ),
       child: TextFormField(
-        initialValue: initialValue,
         keyboardType: keyboardType,
         obscureText: obscureText,
         validator: validator,
@@ -191,16 +178,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
               Text(
                 "Create Account",
                 style: GoogleFonts.poppins(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 30),
+
               Form(
                 key: _formKey,
                 child: Column(
@@ -208,49 +194,71 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _styledTextField(
                       label: "First Name",
                       obscureText: false,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Enter first name' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? "Enter first name"
+                          : null,
                       onSaved: (v) => _firstName = v ?? '',
                     ),
                     _styledTextField(
                       label: "Last Name",
                       obscureText: false,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Enter last name' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? "Enter last name"
+                          : null,
                       onSaved: (v) => _lastName = v ?? '',
                     ),
                     _styledTextField(
                       label: "Email",
                       obscureText: false,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
+                      validator: (v) => (v == null || !v.contains('@'))
+                          ? "Enter a valid email"
+                          : null,
                       onSaved: (v) => _email = v ?? '',
                     ),
                     _styledTextField(
                       label: "Password",
                       obscureText: _obscure1,
-                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                      validator: (v) =>
+                          (v == null || v.length < 6)
+                              ? "Min 6 characters"
+                              : null,
                       onSaved: (v) => _password = v ?? '',
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure1 ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscure1 = !_obscure1),
+                        icon: Icon(_obscure1
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () =>
+                            setState(() => _obscure1 = !_obscure1),
                       ),
                     ),
                     _styledTextField(
                       label: "Confirm Password",
                       obscureText: _obscure2,
-                      validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                      validator: (v) =>
+                          (v == null || v.length < 6)
+                              ? "Min 6 characters"
+                              : null,
                       onSaved: (v) => _confirm = v ?? '',
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure2 ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscure2 = !_obscure2),
+                        icon: Icon(_obscure2
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () =>
+                            setState(() => _obscure2 = !_obscure2),
                       ),
                     ),
-                    const SizedBox(height: 24),
+
+                    const SizedBox(height: 20),
+
                     if (_error != null)
                       Text(
                         _error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                        style: const TextStyle(color: Colors.red),
                       ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(height: 20),
+
                     _loading
                         ? const CircularProgressIndicator()
                         : SizedBox(
@@ -260,16 +268,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryBlue,
                                 foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
                               child: Text(
                                 "Create Account",
                                 style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
                                   fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),

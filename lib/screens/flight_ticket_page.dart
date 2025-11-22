@@ -78,32 +78,7 @@ class FlightTicketPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flightNumber = bookingData['flightNumber'] ?? '';
-    final airline = bookingData['airline'] ?? '';
-    final departure = bookingData['departure'] ?? '';
-    final destination = bookingData['destination'] ?? '';
-    final travelDate = bookingData['travelDate'] != null
-        ? bookingData['travelDate'].toString().split('T')[0]
-        : '';
-    final seatClass = bookingData['seatClass'] ?? '';
-
-    final totalFare =
-        bookingData['fareTotal'] ??
-        bookingData['totalFare'] ??
-        bookingData['fare'] ??
-        bookingData['finalTotal'] ??
-        bookingData['amount'] ??
-        bookingData['price'] ??
-        0;
-
-    // 🔥 FORMAT FARE HERE
-    final formattedFare = NumberFormat('#,##0.00').format(totalFare);
-
-    final notes = bookingData['notes'] ?? '';
-    final paymentMethod = bookingData['paymentMethod'] ?? '';
-    final bookingType = bookingData['bookingType'] ?? 'Single Flight';
-    final departureTime = bookingData['departureTime'] ?? '';
-    final arrivalTime = bookingData['arrivalTime'] ?? '';
+    // PASSENGERS SAFE PARSED
     final passengers = (bookingData['passengers'] as List<dynamic>? ?? [])
         .map(
           (p) => {
@@ -114,6 +89,49 @@ class FlightTicketPage extends StatelessWidget {
           },
         )
         .toList();
+
+    // 🌟 FIXED: SAFE ROUND TRIP CHECK
+    final returnFlightData =
+        (bookingData['returnFlight'] as Map<dynamic, dynamic>?);
+
+    final bool isRoundTrip =
+        returnFlightData != null && returnFlightData.isNotEmpty;
+
+    // OUTBOUND SAFE MAP
+    final outboundFlight = {
+      'airline': bookingData['airline'] ?? '',
+      'flightNumber': bookingData['flightNumber'] ?? '',
+      'departure': bookingData['departure'] ?? '',
+      'destination': bookingData['destination'] ?? '',
+      'travelDate': bookingData['travelDate'] ?? '',
+      'departureTime': bookingData['departureTime'] ?? '',
+      'arrivalTime': bookingData['arrivalTime'] ?? '',
+      'seatClass': bookingData['seatClass'] ?? '',
+    };
+
+    // RETURN SAFE MAP
+    final returnFlight = isRoundTrip
+        ? {
+            'airline': returnFlightData['airline'] ?? '',
+            'flightNumber': returnFlightData['flightNumber'] ?? '',
+            'departure': returnFlightData['departure'] ?? '',
+            'destination': returnFlightData['destination'] ?? '',
+            'travelDate': returnFlightData['travelDate'] ?? '',
+            'departureTime': returnFlightData['departureTime'] ?? '',
+            'arrivalTime': returnFlightData['arrivalTime'] ?? '',
+            'seatClass': bookingData['seatClass'] ?? '',
+          }
+        : null;
+
+    // FARE SAFE
+    final totalFare =
+        (bookingData['fareTotal'] ??
+                bookingData['totalFare'] ??
+                bookingData['finalTotal'] ??
+                0)
+            .toDouble();
+
+    final formattedFare = NumberFormat('#,##0.00').format(totalFare);
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -132,38 +150,35 @@ class FlightTicketPage extends StatelessWidget {
         centerTitle: true,
       ),
 
+      // BODY
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                itemCount: passengers.length,
-                itemBuilder: (context, index) {
-                  final passenger = passengers[index];
+              child: ListView(
+                children: [
+                  // OUTBOUND TICKET
+                  ..._generateTickets(
+                    passengers: passengers,
+                    flight: outboundFlight,
+                    title: "Outbound Flight",
+                    totalFare: formattedFare,
+                  ),
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: _singleTicket(
-                      passenger: passenger,
-                      flightNumber: flightNumber,
-                      airline: airline,
-                      departure: departure,
-                      destination: destination,
-                      travelDate: travelDate,
-                      seatClass: seatClass,
+                  // RETURN TICKET
+                  if (isRoundTrip && returnFlight != null)
+                    ..._generateTickets(
+                      passengers: passengers,
+                      flight: returnFlight,
+                      title: "Return Flight",
                       totalFare: formattedFare,
-                      paymentMethod: paymentMethod,
-                      notes: notes,
-                      bookingType: bookingType,
-                      departureTime: departureTime,
-                      arrivalTime: arrivalTime,
                     ),
-                  );
-                },
+                ],
               ),
             ),
 
+            // CANCEL BUTTON
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
@@ -185,22 +200,42 @@ class FlightTicketPage extends StatelessWidget {
     );
   }
 
+  // ------------------- TICKET BUILDER -------------------
+
+  List<Widget> _generateTickets({
+    required List<Map<String, dynamic>> passengers,
+    required Map<String, dynamic> flight,
+    required String title,
+    required String totalFare,
+  }) {
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Text(
+          title,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      ...passengers.map(
+        (p) =>
+            _singleTicket(passenger: p, flight: flight, totalFare: totalFare),
+      ),
+      const SizedBox(height: 20),
+    ];
+  }
+
   Widget _singleTicket({
     required Map<String, dynamic> passenger,
-    required String flightNumber,
-    required String airline,
-    required String departure,
-    required String destination,
-    required String travelDate,
-    required String seatClass,
+    required Map<String, dynamic> flight,
     required String totalFare,
-    required String paymentMethod,
-    required String notes,
-    required String bookingType,
-    required String departureTime,
-    required String arrivalTime,
   }) {
+    final travelDate = (flight['travelDate'] ?? '').toString();
+    final formattedDate = travelDate.contains("T")
+        ? travelDate.split("T")[0]
+        : travelDate;
+
     return Container(
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -214,6 +249,7 @@ class FlightTicketPage extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // HEADER
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -226,27 +262,24 @@ class FlightTicketPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Airline
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      airline,
+                      flight['airline'],
                       style: GoogleFonts.poppins(
-                        textStyle: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      flightNumber,
+                      flight['flightNumber'],
                       style: GoogleFonts.poppins(
-                        textStyle: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        color: Colors.white70,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -260,23 +293,19 @@ class FlightTicketPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      departure,
+                      flight['departure'],
                       style: GoogleFonts.poppins(
-                        textStyle: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      destination,
+                      flight['destination'],
                       style: GoogleFonts.poppins(
-                        textStyle: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        color: Colors.white70,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -287,37 +316,21 @@ class FlightTicketPage extends StatelessWidget {
 
           const Divider(thickness: 1),
 
+          // BODY CONTENT
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Booking Type: $bookingType',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                ),
-
-                const SizedBox(height: 12),
-                const Text(
-                  'Passenger Information',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                _ticketRow('Name', passenger['name']),
-                _ticketRow('Age Group', passenger['ageGroup']),
-                if (passenger['ageGroup'] == 'Infant (0-2)')
-                  _ticketRow('Infant Seating', passenger['infantSeating']),
-                _ticketRow('Seat', passenger['seatNumber']),
-                _ticketRow('Date', travelDate),
-                _ticketRow('Departure Time', departureTime),
-                _ticketRow('Arrival Time', arrivalTime),
-                _ticketRow('Class', seatClass),
-
-                // 🔥 Formatted fare here
-                _ticketRow('Fare', '₱$totalFare'),
-
-                _ticketRow('Payment', paymentMethod),
-                if (notes.isNotEmpty) _ticketRow('Notes', notes),
+                _ticketRow("Passenger", passenger['name']),
+                _ticketRow("Age Group", passenger['ageGroup']),
+                if (passenger['ageGroup'] == "Infant (0-2)")
+                  _ticketRow("Infant Seating", passenger['infantSeating']),
+                _ticketRow("Seat", passenger['seatNumber']),
+                _ticketRow("Date", formattedDate),
+                _ticketRow("Departure Time", flight['departureTime']),
+                _ticketRow("Arrival Time", flight['arrivalTime']),
+                _ticketRow("Class", flight['seatClass']),
+                _ticketRow("Fare", "₱$totalFare"),
               ],
             ),
           ),
