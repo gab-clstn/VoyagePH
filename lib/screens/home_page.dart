@@ -236,7 +236,6 @@ class _HomePageState extends State<HomePage>
                       children: [
                         _tripTypeButton('Round Trip'),
                         _tripTypeButton('One Way'),
-                        _tripTypeButton('Multi-City'),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -284,7 +283,7 @@ class _HomePageState extends State<HomePage>
                           child: _dateField(
                             'Return',
                             returnDate,
-                            tripType == 'One Way' || tripType == 'Multi-City'
+                            tripType == 'One Way'
                                 ? null
                                 : () => _selectDate(context, false),
                             isError: returnError && tripType == 'Round Trip',
