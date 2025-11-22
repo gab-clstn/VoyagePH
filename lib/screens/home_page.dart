@@ -123,19 +123,33 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _selectDate(BuildContext context, bool isDeparture) async {
+    final DateTime now = DateTime.now();
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isDeparture
-          ? (departureDate ?? DateTime.now())
-          : (returnDate ?? DateTime.now().add(const Duration(days: 1))),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+          ? (departureDate ?? now)
+          : (returnDate ??
+                (departureDate != null
+                    ? departureDate!.add(const Duration(days: 1))
+                    : now.add(const Duration(days: 1)))),
+      firstDate: isDeparture
+          ? now
+          : (departureDate != null
+                ? departureDate!.add(
+                    const Duration(days: 1),
+                  ) // ⛔ Block same-day return
+                : now.add(const Duration(days: 1))),
+      lastDate: now.add(const Duration(days: 365)),
     );
+
     if (picked != null) {
       setState(() {
         if (isDeparture) {
           departureDate = picked;
-          if (returnDate != null && returnDate!.isBefore(departureDate!)) {
+
+          // Auto-fix return date if invalid
+          if (returnDate != null && !returnDate!.isAfter(departureDate!)) {
             returnDate = departureDate!.add(const Duration(days: 1));
           }
         } else {
