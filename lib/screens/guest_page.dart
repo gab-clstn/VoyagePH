@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:voyageph/auth/auth_landing.dart';
 import 'home_page.dart';
 import 'flights_page.dart';
 import 'package:voyageph/auth/login_screen.dart';
@@ -28,14 +29,8 @@ class _GuestWrapperState extends State<GuestWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          guestTitles[_currentIndex],
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: const Color(0xFF4B7B9A),
-        foregroundColor: Colors.white,
-      ),
+      
+      
 
       body: guestPages[_currentIndex],
 
@@ -88,7 +83,7 @@ class _GuestWrapperState extends State<GuestWrapper> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const AuthLanding()),
               );
             },
             child: const Text("Log In"),

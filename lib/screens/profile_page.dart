@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:voyageph/auth/auth_landing.dart' show AuthLanding;
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -634,12 +635,18 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
       if (mounted) {
         setState(() => _message = 'Account deleted.');
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthLanding()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _message = e.message);
     } catch (_) {
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthLanding()),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
