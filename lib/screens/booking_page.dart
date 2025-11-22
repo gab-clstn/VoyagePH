@@ -158,16 +158,21 @@ class _BookingPageState extends State<BookingPage> {
         multiplier = 1.0;
     }
 
+    // --- FIX: Add outbound + return flight price ---
+    double outboundPrice = widget.flight?['price']?.toDouble() ?? 2000;
+    double returnPrice = widget.returnFlight?['price']?.toDouble() ?? 0;
+    double combinedBaseFare = outboundPrice + returnPrice;
+
     double total = 0.0;
     for (int i = 0; i < _totalPassengers; i++) {
       if (_ageGroups[i] == 'Infant (0-2)') {
         if (_infantSeating[i] == 'On Lap') {
           total += 1000;
         } else {
-          total += _baseFare * multiplier;
+          total += combinedBaseFare * multiplier;
         }
       } else {
-        total += _baseFare * multiplier;
+        total += combinedBaseFare * multiplier;
       }
     }
 
