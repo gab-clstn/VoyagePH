@@ -694,6 +694,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     onPressed: _deleteNow,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
                     ),
                     child: Text(
                       'Delete Account Now',
