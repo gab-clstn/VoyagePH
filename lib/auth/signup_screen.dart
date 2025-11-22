@@ -209,7 +209,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Back button
                 Align(
                   alignment: Alignment.topLeft,
                   child: Padding(

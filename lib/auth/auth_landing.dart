@@ -33,7 +33,7 @@ class AuthLanding extends StatelessWidget {
             child: Image.asset('lib/assets/earth2.gif', fit: BoxFit.cover),
           ),
 
-          // 🔹 Main content (top)
+          // 🔹 Main content (top part)
           SafeArea(
             child: Center(
               child: Padding(

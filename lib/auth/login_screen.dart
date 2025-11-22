@@ -66,7 +66,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         } else {
-          // Normal user: just pop login
           if (mounted) Navigator.of(context).pop();
         }
       }
