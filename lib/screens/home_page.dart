@@ -279,14 +279,17 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(
-                          child: _dateField(
-                            'Return',
-                            returnDate,
-                            tripType == 'One Way'
-                                ? null
-                                : () => _selectDate(context, false),
-                            isError: returnError && tripType == 'Round Trip',
+                        Visibility(
+                          visible: tripType == 'Round Trip',
+                          child: Expanded(
+                            child: _dateField(
+                              'Return',
+                              returnDate,
+                              tripType == 'One Way'
+                                  ? null
+                                  : () => _selectDate(context, false),
+                              isError: returnError && tripType == 'Round Trip',
+                            ),
                           ),
                         ),
                       ],
