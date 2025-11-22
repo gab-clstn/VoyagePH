@@ -75,23 +75,6 @@ class FlightTicketPage extends StatelessWidget {
     }
   }
 
-  /// Get the seat number from bookingData
-  String getSeatNumber(Map<String, dynamic> data) {
-    return data['seatNumber']?.toString() ?? 'N/A';
-  }
-
-  /// Get passenger names
-  String getPassengerNames(Map<String, dynamic> data) {
-    final passengers = data['passengers'] as List<dynamic>?;
-    if (passengers != null && passengers.isNotEmpty) {
-      final names = passengers.map((p) => p['name'] ?? 'Unknown').toList();
-      return names.join(', ');
-    } else if (data['passengerNames'] != null) {
-      return data['passengerNames'].toString();
-    }
-    return 'N/A';
-  }
-
   @override
   Widget build(BuildContext context) {
     final flightNumber = bookingData['flightNumber'] ?? '';
@@ -99,35 +82,31 @@ class FlightTicketPage extends StatelessWidget {
     final departure = bookingData['departure'] ?? '';
     final destination = bookingData['destination'] ?? '';
     final travelDate = bookingData['travelDate'] != null
-        ? bookingData['travelDate'].toString().split(
-            'T',
-          )[0] // if ISO string format
+        ? bookingData['travelDate'].toString().split('T')[0]
         : '';
     final seatClass = bookingData['seatClass'] ?? '';
-    final totalFare = bookingData['totalFare'] ?? 0;
+    final totalFare = bookingData['fareTotal'] ?? 0;
     final notes = bookingData['notes'] ?? '';
-    final paymentMethod = bookingData['paymentMethod'] ?? '';
     final bookingType = bookingData['bookingType'] ?? 'Single Flight';
-
-    final passengers =
-        (bookingData['passengers'] as List<dynamic>?)
-            ?.map(
-              (p) => {
-                'name': p['name'] ?? '',
-                'ageGroup': p['ageGroup'] ?? '',
-                'seatNumber': p['seatNumber'] ?? 'N/A',
-                'infantSeating': p['infantSeating'] ?? '',
-              },
-            )
-            .toList() ??
-        [];
+    final passengers = (bookingData['passengers'] as List<dynamic>? ?? []).map((
+      p,
+    ) {
+      // If your Firestore stores seatNumber per passenger, use p['seatNumber']
+      return {
+        'name': p['name'] ?? '',
+        'ageGroup': p['ageGroup'] ?? '',
+        'seatNumber': p['seatNumber'] ?? bookingData['seatNumber'] ?? 'N/A',
+        'paymentMethod':
+            p['paymentMethod'] ?? bookingData['paymentMethod'] ?? '',
+      };
+    }).toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 11, 66, 121),
         title: Text(
-          'Flight Ticket',
+          'Flight Tickets',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
               fontWeight: FontWeight.w600,
@@ -140,135 +119,20 @@ class FlightTicketPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: ListView(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[800],
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              airline,
-                              style: GoogleFonts.poppins(
-                                textStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              flightNumber,
-                              style: GoogleFonts.poppins(
-                                textStyle: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Icon(
-                          Icons.airplanemode_active,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              departure,
-                              style: GoogleFonts.poppins(
-                                textStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              destination,
-                              style: GoogleFonts.poppins(
-                                textStyle: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(thickness: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Booking Type: $bookingType',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Passengers',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ...passengers.map(
-                          (p) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Name: ${p['name']}'),
-                                Text('Age Group: ${p['ageGroup']}'),
-                                if (p['ageGroup'] == 'Infant (0-2)')
-                                  Text('Infant Seating: ${p['infantSeating']}'),
-                                Text('Seat: ${p['seatNumber']}'),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _ticketRow('Date', travelDate),
-                        _ticketRow('Class', seatClass),
-                        _ticketRow('Total Fare', '₱$totalFare'),
-                        _ticketRow('Payment Method', paymentMethod),
-                        if (notes.isNotEmpty) _ticketRow('Notes', notes),
-                      ],
-                    ),
-                  ),
-                ],
+            ...passengers.map(
+              (p) => _buildTicketCard(
+                passenger: p,
+                flightNumber: flightNumber,
+                airline: airline,
+                departure: departure,
+                destination: destination,
+                travelDate: travelDate,
+                seatClass: seatClass,
+                totalFare: totalFare,
+                notes: notes,
+                bookingType: bookingType,
               ),
             ),
             const SizedBox(height: 24),
@@ -293,20 +157,159 @@ class FlightTicketPage extends StatelessWidget {
     );
   }
 
+  Widget _buildTicketCard({
+    required Map<String, dynamic> passenger,
+    required String flightNumber,
+    required String airline,
+    required String departure,
+    required String destination,
+    required String travelDate,
+    required String seatClass,
+    required double totalFare,
+    required String notes,
+    required String bookingType,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[800],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      airline,
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      flightNumber,
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Icon(
+                  Icons.airplanemode_active,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      departure,
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      destination,
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(thickness: 1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ticketRow('Booking Type', bookingType),
+                _ticketRow('Name', passenger['name'] ?? 'N/A'),
+                _ticketRow('Age Group', passenger['ageGroup'] ?? 'N/A'),
+                _ticketRow('Seat', passenger['seatNumber'] ?? 'N/A'),
+                _ticketRow(
+                  'Payment Method',
+                  passenger['paymentMethod'] ?? 'N/A',
+                ),
+                _ticketRow('Date', travelDate),
+                _ticketRow('Class', seatClass),
+                _ticketRow('Total Fare', '₱$totalFare'),
+                if (notes.isNotEmpty) _ticketRow('Notes', notes),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _ticketRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
+          Expanded(
+            flex: 3,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+                fontSize: 14,
+              ),
             ),
           ),
-          Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          Expanded(
+            flex: 4,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              overflow: TextOverflow.visible,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
         ],
       ),
     );
