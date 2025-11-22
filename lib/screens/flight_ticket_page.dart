@@ -116,7 +116,8 @@ class FlightTicketPage extends StatelessWidget {
             'flightNumber': returnFlightData['flightNumber'] ?? '',
             'departure': returnFlightData['departure'] ?? '',
             'destination': returnFlightData['destination'] ?? '',
-            'travelDate': returnFlightData['travelDate'] ?? '',
+            'travelDate': bookingData['returnDate'] ?? '',
+
             'departureTime': returnFlightData['departureTime'] ?? '',
             'arrivalTime': returnFlightData['arrivalTime'] ?? '',
             'seatClass': bookingData['seatClass'] ?? '',
