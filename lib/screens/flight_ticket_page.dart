@@ -23,11 +23,13 @@ class FlightTicketPage extends StatelessWidget {
         content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Yes')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
         ],
       ),
     );
@@ -44,7 +46,8 @@ class FlightTicketPage extends StatelessWidget {
       if (existing.docs.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('You already requested to cancel this booking')),
+            content: Text('You already requested to cancel this booking'),
+          ),
         );
         return;
       }
@@ -66,9 +69,9 @@ class FlightTicketPage extends StatelessWidget {
         const SnackBar(content: Text('Cancellation request submitted')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -78,21 +81,29 @@ class FlightTicketPage extends StatelessWidget {
     final airline = bookingData['airline'] ?? '';
     final departure = bookingData['departure'] ?? '';
     final destination = bookingData['destination'] ?? '';
-    final travelDate = bookingData['travelDate']?.toString().split('T')[0] ?? '';
+    final travelDate = bookingData['travelDate'] != null
+        ? bookingData['travelDate'].toString().split(
+            'T',
+          )[0] // if ISO string format
+        : '';
     final seatClass = bookingData['seatClass'] ?? '';
-    final fareTotal = bookingData['fareTotal'] ?? 0;
+    final totalFare = bookingData['totalFare'] ?? 0;
+    final notes = bookingData['notes'] ?? '';
+    final paymentMethod = bookingData['paymentMethod'] ?? '';
+    final bookingType = bookingData['bookingType'] ?? 'Single Flight';
 
-    final passengers = (bookingData['passengers'] as List<dynamic>?)
-            ?.map((p) => p['name'] ?? '')
-            .join(', ') ??
-        bookingData['passengerNames'] ??
-        '';
-
-    final seats = (bookingData['passengers'] as List<dynamic>?)
-            ?.map((p) => p['seatNumber']?.toString() ?? '')
-            .join(', ') ??
-        bookingData['seatNumber']?.toString() ??
-        'N/A';
+    final passengers =
+        (bookingData['passengers'] as List<dynamic>?)
+            ?.map(
+              (p) => {
+                'name': p['name'] ?? '',
+                'ageGroup': p['ageGroup'] ?? '',
+                'seatNumber': p['seatNumber'] ?? 'N/A',
+                'infantSeating': p['infantSeating'] ?? '',
+              },
+            )
+            .toList() ??
+        [];
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -102,7 +113,10 @@ class FlightTicketPage extends StatelessWidget {
           'Flight Ticket',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
-                fontWeight: FontWeight.w600, color: Colors.white, fontSize: 20),
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 20,
+            ),
           ),
         ),
         centerTitle: true,
@@ -111,21 +125,20 @@ class FlightTicketPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Ticket Container
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black26.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4))
+                    color: Colors.black26.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
                 children: [
-                  // Top Section: Airline Info
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -144,17 +157,22 @@ class FlightTicketPage extends StatelessWidget {
                             Text(
                               airline,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               flightNumber,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white70, fontSize: 14)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -169,56 +187,67 @@ class FlightTicketPage extends StatelessWidget {
                             Text(
                               departure,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               destination,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white70, fontSize: 14)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  // Perforated Line
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Divider(
-                        color: Colors.grey,
-                        thickness: 1,
-                        height: 1,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(
-                            50,
-                            (index) => Container(
-                                  width: 4,
-                                  height: 1,
-                                  color: index % 2 == 0
-                                      ? Colors.white
-                                      : Colors.grey[200],
-                                )),
-                      )
-                    ],
-                  ),
-                  // Bottom Section: Details
+                  const Divider(thickness: 1),
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _ticketRow('Passenger(s)', passengers),
-                        _ticketRow('Seat(s)', seats),
+                        Text(
+                          'Booking Type: $bookingType',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Passengers',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...passengers.map(
+                          (p) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Name: ${p['name']}'),
+                                Text('Age Group: ${p['ageGroup']}'),
+                                if (p['ageGroup'] == 'Infant (0-2)')
+                                  Text('Infant Seating: ${p['infantSeating']}'),
+                                Text('Seat: ${p['seatNumber']}'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         _ticketRow('Date', travelDate),
                         _ticketRow('Class', seatClass),
-                        _ticketRow('Total Fare', '₱$fareTotal'),
+                        _ticketRow('Total Fare', '₱$totalFare'),
+                        _ticketRow('Payment Method', paymentMethod),
+                        if (notes.isNotEmpty) _ticketRow('Notes', notes),
                       ],
                     ),
                   ),
@@ -231,7 +260,8 @@ class FlightTicketPage extends StatelessWidget {
                 minimumSize: const Size.fromHeight(50),
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               icon: const Icon(Icons.cancel_outlined),
               label: const Text(
@@ -255,12 +285,11 @@ class FlightTicketPage extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500, color: Colors.grey[700]),
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          ),
+          Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         ],
       ),
     );
