@@ -23,11 +23,13 @@ class FlightTicketPage extends StatelessWidget {
         content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Yes')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
         ],
       ),
     );
@@ -44,7 +46,8 @@ class FlightTicketPage extends StatelessWidget {
       if (existing.docs.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('You already requested to cancel this booking')),
+            content: Text('You already requested to cancel this booking'),
+          ),
         );
         return;
       }
@@ -66,10 +69,27 @@ class FlightTicketPage extends StatelessWidget {
         const SnackBar(content: Text('Cancellation request submitted')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  /// Get the seat number from bookingData
+  String getSeatNumber(Map<String, dynamic> data) {
+    return data['seatNumber']?.toString() ?? 'N/A';
+  }
+
+  /// Get passenger names
+  String getPassengerNames(Map<String, dynamic> data) {
+    final passengers = data['passengers'] as List<dynamic>?;
+    if (passengers != null && passengers.isNotEmpty) {
+      final names = passengers.map((p) => p['name'] ?? 'Unknown').toList();
+      return names.join(', ');
+    } else if (data['passengerNames'] != null) {
+      return data['passengerNames'].toString();
+    }
+    return 'N/A';
   }
 
   @override
@@ -78,21 +98,13 @@ class FlightTicketPage extends StatelessWidget {
     final airline = bookingData['airline'] ?? '';
     final departure = bookingData['departure'] ?? '';
     final destination = bookingData['destination'] ?? '';
-    final travelDate = bookingData['travelDate']?.toString().split('T')[0] ?? '';
+    final travelDate =
+        bookingData['travelDate']?.toString().split('T')[0] ?? '';
     final seatClass = bookingData['seatClass'] ?? '';
     final fareTotal = bookingData['fareTotal'] ?? 0;
 
-    final passengers = (bookingData['passengers'] as List<dynamic>?)
-            ?.map((p) => p['name'] ?? '')
-            .join(', ') ??
-        bookingData['passengerNames'] ??
-        '';
-
-    final seats = (bookingData['passengers'] as List<dynamic>?)
-            ?.map((p) => p['seatNumber']?.toString() ?? '')
-            .join(', ') ??
-        bookingData['seatNumber']?.toString() ??
-        'N/A';
+    final passengers = getPassengerNames(bookingData);
+    final seatNumber = getSeatNumber(bookingData);
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -102,7 +114,10 @@ class FlightTicketPage extends StatelessWidget {
           'Flight Ticket',
           style: GoogleFonts.poppins(
             textStyle: const TextStyle(
-                fontWeight: FontWeight.w600, color: Colors.white, fontSize: 20),
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 20,
+            ),
           ),
         ),
         centerTitle: true,
@@ -118,9 +133,10 @@ class FlightTicketPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black26.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4))
+                    color: Colors.black26.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
@@ -144,17 +160,22 @@ class FlightTicketPage extends StatelessWidget {
                             Text(
                               airline,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               flightNumber,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white70, fontSize: 14)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -169,17 +190,22 @@ class FlightTicketPage extends StatelessWidget {
                             Text(
                               departure,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               destination,
                               style: GoogleFonts.poppins(
-                                  textStyle: const TextStyle(
-                                      color: Colors.white70, fontSize: 14)),
+                                textStyle: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -198,15 +224,16 @@ class FlightTicketPage extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: List.generate(
-                            50,
-                            (index) => Container(
-                                  width: 4,
-                                  height: 1,
-                                  color: index % 2 == 0
-                                      ? Colors.white
-                                      : Colors.grey[200],
-                                )),
-                      )
+                          50,
+                          (index) => Container(
+                            width: 4,
+                            height: 1,
+                            color: index % 2 == 0
+                                ? Colors.white
+                                : Colors.grey[200],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   // Bottom Section: Details
@@ -215,7 +242,7 @@ class FlightTicketPage extends StatelessWidget {
                     child: Column(
                       children: [
                         _ticketRow('Passenger(s)', passengers),
-                        _ticketRow('Seat(s)', seats),
+                        _ticketRow('Seat', seatNumber),
                         _ticketRow('Date', travelDate),
                         _ticketRow('Class', seatClass),
                         _ticketRow('Total Fare', '₱$fareTotal'),
@@ -231,7 +258,8 @@ class FlightTicketPage extends StatelessWidget {
                 minimumSize: const Size.fromHeight(50),
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               icon: const Icon(Icons.cancel_outlined),
               label: const Text(
@@ -255,12 +283,11 @@ class FlightTicketPage extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500, color: Colors.grey[700]),
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          ),
+          Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         ],
       ),
     );
